@@ -47,7 +47,7 @@ server {
 server {
     listen 80;
     listen [::]:80;
-    server_name ${FOCORIS_QA_DOMAIN};
+    server_name ${FOCORIS_DOMAIN};
     server_tokens off;
 
     location ^~ /.well-known/acme-challenge/ {

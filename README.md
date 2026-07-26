@@ -42,12 +42,15 @@ Start the application stacks first:
 
 ```bash
 cd /path/to/podolog
+cp .env.prod .env
 docker compose up --build -d
 
 cd /path/to/focoris
-cp .env.docker.example .env.docker
-# Replace every placeholder in .env.docker before continuing.
-docker compose --env-file .env.docker up --build -d
+cp .env.dev .env
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.dev.yml \
+  up --build -d
 ```
 
 Start infra in HTTP bootstrap mode:
@@ -74,8 +77,8 @@ docker compose run --rm --entrypoint certbot certbot certonly \
 
 docker compose run --rm --entrypoint certbot certbot certonly \
   --webroot --webroot-path /var/www/certbot \
-  --cert-name "$FOCORIS_QA_DOMAIN" \
-  --domain "$FOCORIS_QA_DOMAIN" \
+  --cert-name "$FOCORIS_DOMAIN" \
+  --domain "$FOCORIS_DOMAIN" \
   --email "$LETSENCRYPT_EMAIL" \
   --agree-tos --no-eff-email --non-interactive
 
