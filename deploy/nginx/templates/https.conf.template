@@ -1,0 +1,121 @@
+resolver 127.0.0.11 valid=30s ipv6=off;
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAIN_PODOLOG} www.${DOMAIN_PODOLOG} ${FOCORIS_QA_DOMAIN};
+    server_tokens off;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type text/plain;
+    }
+
+    location / {
+        if ($host = www.${DOMAIN_PODOLOG}) {
+            return 301 https://${DOMAIN_PODOLOG}$request_uri;
+        }
+
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name www.${DOMAIN_PODOLOG};
+    server_tokens off;
+
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN_PODOLOG}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN_PODOLOG}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    return 301 https://${DOMAIN_PODOLOG}$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name ${DOMAIN_PODOLOG};
+    server_tokens off;
+
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN_PODOLOG}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN_PODOLOG}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    location / {
+        set $podolog_upstream http://podolog-nginx:80;
+        proxy_pass $podolog_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name ${FOCORIS_QA_DOMAIN};
+    server_tokens off;
+
+    ssl_certificate /etc/letsencrypt/live/${FOCORIS_QA_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${FOCORIS_QA_DOMAIN}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    location ^~ /api/ {
+        set $focoris_auth_upstream http://focoris-auth-api:3001;
+        proxy_pass $focoris_auth_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
+    }
+
+    location / {
+        set $focoris_web_upstream http://focoris-web:3000;
+        proxy_pass $focoris_web_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
+    }
+}

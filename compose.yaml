@@ -1,0 +1,58 @@
+services:
+  nginx:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN_PODOLOG: ${DOMAIN_PODOLOG}
+      FOCORIS_QA_DOMAIN: ${FOCORIS_QA_DOMAIN}
+    volumes:
+      - ./deploy/nginx/templates:/etc/nginx/site-templates:ro
+      - letsencrypt:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+    command:
+      - /bin/sh
+      - -c
+      - |
+        if [ -f "/etc/letsencrypt/live/$${DOMAIN_PODOLOG}/fullchain.pem" ] && [ -f "/etc/letsencrypt/live/$${FOCORIS_QA_DOMAIN}/fullchain.pem" ]; then
+          envsubst '$$DOMAIN_PODOLOG $$FOCORIS_QA_DOMAIN' < /etc/nginx/site-templates/https.conf.template > /etc/nginx/conf.d/default.conf
+        else
+          envsubst '$$DOMAIN_PODOLOG $$FOCORIS_QA_DOMAIN' < /etc/nginx/site-templates/http.conf.template > /etc/nginx/conf.d/default.conf
+        fi
+        while :; do
+          sleep 6h
+          nginx -t && nginx -s reload
+        done &
+        exec nginx -g 'daemon off;'
+    networks:
+      - shared_proxy
+
+  certbot:
+    image: certbot/certbot:latest
+    restart: unless-stopped
+    depends_on:
+      nginx:
+        condition: service_started
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        trap exit TERM
+        while :; do
+          certbot renew --webroot --webroot-path=/var/www/certbot --quiet
+          sleep 12h & wait $${!}
+        done
+
+volumes:
+  letsencrypt:
+  certbot_www:
+
+networks:
+  shared_proxy:
+    external: true
+    name: shared_proxy
