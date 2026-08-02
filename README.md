@@ -47,10 +47,7 @@ docker compose up --build -d
 
 cd /path/to/focoris
 cp .env.dev .env
-docker compose \
-  -f docker-compose.yml \
-  -f docker-compose.dev.yml \
-  up --build -d
+docker compose up --build -d
 ```
 
 Start infra in HTTP bootstrap mode:
