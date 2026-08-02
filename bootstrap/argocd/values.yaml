@@ -56,7 +56,7 @@ repoServer:
     - name: cmp-sops
       command:
         - /var/run/argocd/argocd-cmp-server
-      image: ghcr.io/gena-tokarev/argocd-sops-plugin:main
+      image: ghcr.io/gena-tokarev/argocd-sops-plugin@sha256:08743da14c33e7595a56f3403c5296586747a0fa0b9c9e36b1af2efde04e6ba4
       imagePullPolicy: IfNotPresent
       env:
         - name: SOPS_AGE_KEY_FILE
