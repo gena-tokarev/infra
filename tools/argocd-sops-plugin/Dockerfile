@@ -1,4 +1,4 @@
-FROM ghcr.io/getsops/sops:v3.13.0-alpine@sha256:9caf87dc33a1ecee5c6585ca3b4f993965147ad6648e770042d5d318bd1efc2d
+FROM ghcr.io/getsops/sops:v3.13.3-alpine@sha256:ae501277bf742f1662e0f881f43dd8fd6798b489a8058e921dbf6cda597140ea
 
 USER root
 
