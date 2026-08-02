@@ -1,0 +1,37 @@
+sourceSha: bootstrap
+authApi:
+  image:
+    repository: ghcr.io/gena-tokarev/cortex-auth-api
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  replicas: 1
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+web:
+  image:
+    repository: ghcr.io/gena-tokarev/cortex-web
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  replicas: 1
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+config:
+  AUTH_ACCESS_TOKEN_TTL_SECONDS: "900"
+  AUTH_REFRESH_TOKEN_TTL_SECONDS: "604800"
+  AUTH_COOKIE_ACCESS_TOKEN_NAME: cortex_access_token
+  AUTH_COOKIE_REFRESH_TOKEN_NAME: cortex_refresh_token
+  AUTH_COOKIE_SECURE: "true"
+  AUTH_COOKIE_SAME_SITE: lax
+  AUTH_EXTERNAL_AUTH_CODE_TTL_SECONDS: "300"
+  GOOGLE_CALLBACK_URL: https://cortex-dev.podolog-warsaw.pl/api/external-auth/google/callback
+  GOOGLE_ALLOWED_WEB_REDIRECT_URIS: https://cortex-dev.podolog-warsaw.pl
+  GOOGLE_ALLOWED_NATIVE_REDIRECT_URIS: cortex://auth/callback
+  PASSKEY_RP_ID: cortex-dev.podolog-warsaw.pl
+  PASSKEY_RP_NAME: Cortex
+  PASSKEY_ALLOWED_ORIGINS: https://cortex-dev.podolog-warsaw.pl
+  WEB_APP_ORIGIN: https://cortex-dev.podolog-warsaw.pl
+  AUTH_API_URL: http://cortex-auth-api:3001
+routing:
+  gatewayName: public
+  gatewayNamespace: gateway-system
+  hostname: cortex-dev.podolog-warsaw.pl

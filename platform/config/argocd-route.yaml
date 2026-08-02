@@ -1,0 +1,75 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: argocd-security-headers
+  namespace: argocd
+spec:
+  headers:
+    browserXssFilter: true
+    contentTypeNosniff: true
+    forceSTSHeader: true
+    frameDeny: true
+    referrerPolicy: no-referrer
+    stsIncludeSubdomains: true
+    stsPreload: true
+    stsSeconds: 31536000
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: argocd-rate-limit
+  namespace: argocd
+spec:
+  rateLimit:
+    average: 30
+    burst: 60
+    period: 1s
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: argocd-security
+  namespace: argocd
+spec:
+  chain:
+    middlewares:
+      - name: argocd-security-headers
+      - name: argocd-rate-limit
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  parentRefs:
+    - name: public
+      namespace: gateway-system
+      sectionName: argocd-https
+  hostnames: [argocd.podolog-warsaw.pl]
+  rules:
+    - filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: argocd-security
+      backendRefs:
+        - name: argocd-server
+          port: 80
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: argocd-http-redirect
+  namespace: argocd
+spec:
+  parentRefs:
+    - name: public
+      namespace: gateway-system
+      sectionName: http
+  hostnames: [argocd.podolog-warsaw.pl]
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect: {scheme: https, statusCode: 301}

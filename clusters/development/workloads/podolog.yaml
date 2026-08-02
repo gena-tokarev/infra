@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: podolog
+  namespace: argocd
+spec:
+  project: workloads
+  sources:
+    - repoURL: git@github.com:gena-tokarev/infra.git
+      targetRevision: main
+      path: charts/podolog
+      helm:
+        releaseName: podolog
+        valueFiles:
+          - $values/environments/development/podolog/values.yaml
+          - $values/environments/development/podolog/release.yaml
+    - repoURL: git@github.com:gena-tokarev/infra.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: podolog
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry:
+      limit: 10
+      backoff: {duration: 10s, factor: 2, maxDuration: 3m}
+    syncOptions: [CreateNamespace=true, PruneLast=true]

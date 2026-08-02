@@ -1,0 +1,28 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    providers:
+      kubernetesIngress:
+        enabled: false
+      kubernetesGateway:
+        enabled: true
+    gateway:
+      enabled: false
+    service:
+      type: LoadBalancer
+    logs:
+      general:
+        level: INFO
+    deployment:
+      replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi

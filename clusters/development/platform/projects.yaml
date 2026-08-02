@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  description: Cluster-level controllers and shared routing
+  sourceRepos:
+    - git@github.com:gena-tokarev/infra.git
+    - https://argoproj.github.io/argo-helm
+    - https://charts.jetstack.io
+    - https://github.com/kubernetes-sigs/gateway-api.git
+  destinations:
+    - namespace: '*'
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: workloads
+  namespace: argocd
+spec:
+  description: Cortex and Podolog workloads
+  sourceRepos:
+    - git@github.com:gena-tokarev/infra.git
+  destinations:
+    - namespace: cortex
+      server: https://kubernetes.default.svc
+    - namespace: podolog
+      server: https://kubernetes.default.svc
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'

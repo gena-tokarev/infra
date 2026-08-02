@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cortex-data
+  namespace: argocd
+spec:
+  project: workloads
+  sources:
+    - repoURL: git@github.com:gena-tokarev/infra.git
+      targetRevision: main
+      path: charts/cortex-data
+      helm:
+        releaseName: cortex-data
+    - repoURL: git@github.com:gena-tokarev/infra.git
+      targetRevision: main
+      path: environments/development/cortex/secrets/data
+      plugin:
+        name: sops-yaml-v1
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cortex
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry:
+      limit: 20
+      backoff: {duration: 10s, factor: 2, maxDuration: 3m}
+    syncOptions: [CreateNamespace=true, PruneLast=true]

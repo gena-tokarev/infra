@@ -1,0 +1,4 @@
+creation_rules:
+  - path_regex: environments/.+/.+\.sops\.yaml$
+    encrypted_regex: ^(data|stringData)$
+    age: age1REPLACE_WITH_YOUR_PUBLIC_RECIPIENT

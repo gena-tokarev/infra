@@ -1,105 +1,50 @@
-# Shared VPS Reverse Proxy
+# VPS GitOps infrastructure
 
-This stack is the only public HTTP entrypoint on the VPS. It owns ports 80/443,
-TLS certificates, and routing to the sibling application stacks over the
-external Docker network `shared_proxy`.
+This private repository is the desired state for the single-node k3s cluster on
+`167.233.59.107`. Argo CD pulls it with a read-only deploy key; application CI
+never connects to the VPS or Kubernetes.
 
-| Request | Destination |
+## Public endpoints
+
+| Host | Workload |
 | --- | --- |
-| `https://podolog-warsaw.pl/*` | `podolog-nginx:80` |
-| `https://www.podolog-warsaw.pl/*` | `301` to the same path on `podolog-warsaw.pl` |
-| `https://focoris-dev.podolog-warsaw.pl/api/*` | `focoris-auth-api:3001` |
-| `https://focoris-dev.podolog-warsaw.pl/*` | `focoris-web:3000` |
+| `podolog-warsaw.pl` | Podolog Next.js site |
+| `www.podolog-warsaw.pl` | Redirect to the apex host |
+| `cortex-dev.podolog-warsaw.pl/api/*` | Cortex auth API |
+| `cortex-dev.podolog-warsaw.pl/*` | Cortex web app |
+| `argocd.podolog-warsaw.pl` | Argo CD with GitHub login |
 
-The nginx templates use Docker's embedded DNS resolver, so this stack can start
-even while an application stack is unavailable. Requests to that unavailable
-upstream return `502` until it joins the network.
+## Release flow
 
-## VPS prerequisites
+1. An application workflow validates and publishes a public GHCR image.
+2. The workflow's narrowly scoped GitHub App commits the immutable digest here.
+3. Argo CD detects the commit, runs any migration hook, and reconciles k3s.
+4. Rollback is a Git revert of the relevant release file.
 
-Point DNS for the apex, `www`, and `focoris-dev` names to the VPS. Add `AAAA`
-records only when the host has working public IPv6, and allow inbound TCP 80 and
-443.
+The SOPS age identity and Argo repository private key exist only in Kubernetes
+and offline recovery storage. Git contains only encrypted application secrets.
 
-Create the shared network once:
+## One-time setup
 
-```bash
-docker network inspect shared_proxy >/dev/null 2>&1 || docker network create shared_proxy
-```
+Follow these documents in order:
 
-Create the private environment file:
+1. [GitHub and DNS setup](docs/github-setup.md)
+2. [SOPS and age setup](docs/secrets.md)
+3. [VPS bootstrap and cutover](docs/cutover.md)
+4. [Rollback](docs/rollback.md)
 
-```bash
-cp .env.example .env
-```
+Before bootstrapping, publish the SOPS plugin workflow, make its GHCR package
+public, replace `REPLACE_WITH_LETSENCRYPT_EMAIL`, and confirm
+`bootstrap/argocd/values.yaml` contains a plugin image pinned by `@sha256:`.
 
-Set a real Let's Encrypt contact address in `.env`. Domain-specific values live
-there rather than in the application repositories.
+## Validation
 
-## First deployment
-
-Start the application stacks first:
-
-```bash
-cd /path/to/podolog
-cp .env.prod .env
-docker compose up --build -d
-
-cd /path/to/focoris
-cp .env.dev .env
-docker compose up --build -d
-```
-
-Start infra in HTTP bootstrap mode:
+CI runs the same entrypoint locally:
 
 ```bash
-cd /path/to/infra
-docker compose up -d
+./scripts/validate.sh
 ```
 
-After DNS resolves publicly to this VPS, issue the certificates:
-
-```bash
-set -a
-. ./.env
-set +a
-
-docker compose run --rm --entrypoint certbot certbot certonly \
-  --webroot --webroot-path /var/www/certbot \
-  --cert-name "$DOMAIN_PODOLOG" \
-  --domain "$DOMAIN_PODOLOG" \
-  --domain "www.$DOMAIN_PODOLOG" \
-  --email "$LETSENCRYPT_EMAIL" \
-  --agree-tos --no-eff-email --non-interactive
-
-docker compose run --rm --entrypoint certbot certbot certonly \
-  --webroot --webroot-path /var/www/certbot \
-  --cert-name "$FOCORIS_DOMAIN" \
-  --domain "$FOCORIS_DOMAIN" \
-  --email "$LETSENCRYPT_EMAIL" \
-  --agree-tos --no-eff-email --non-interactive
-
-docker compose restart nginx
-```
-
-The `set -a` block is needed because Docker Compose reads `.env` for
-interpolation but does not export its values to your shell.
-
-After the nginx restart, HTTP redirects to HTTPS, `www` redirects to the apex,
-and the focoris `/api/` prefix routes to auth-api without stripping `/api`.
-
-## Routine operation
-
-Certbot checks for renewal twice per day. Nginx reloads certificates every six
-hours, so no application stack restart is required after renewal.
-
-Useful checks:
-
-```bash
-docker compose ps
-docker compose logs -f nginx certbot
-docker network inspect shared_proxy
-```
-
-Deploy application changes from their own repositories. Recreate infra only
-when its Compose or nginx files change.
+It lints and renders Helm charts, renders Kustomize roots, schema-checks the
+manifests, parses shell scripts, and rejects tracked age identities or malformed
+SOPS files.

@@ -1,0 +1,9 @@
+sourceSha: bootstrap
+authApi:
+  image:
+    repository: ghcr.io/gena-tokarev/cortex-auth-api
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+web:
+  image:
+    repository: ghcr.io/gena-tokarev/cortex-web
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000

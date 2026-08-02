@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cortex-migrate
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cortex-migrate
+        app.kubernetes.io/part-of: cortex
+        cortex.dev/source-sha: {{ .Values.sourceSha | trunc 63 | quote }}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: migrate
+          image: "{{ .Values.authApi.image.repository }}@{{ .Values.authApi.image.digest }}"
+          imagePullPolicy: IfNotPresent
+          command:
+            - /app/node_modules/.bin/prisma
+            - migrate
+            - deploy
+            - --schema
+            - /app/apps/auth-api/prisma/schema.prisma
+          envFrom:
+            - configMapRef: {name: cortex-config}
+            - secretRef: {name: cortex-runtime}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}

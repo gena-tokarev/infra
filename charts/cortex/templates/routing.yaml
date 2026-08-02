@@ -1,0 +1,38 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: cortex
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  parentRefs:
+    - name: {{ .Values.routing.gatewayName }}
+      namespace: {{ .Values.routing.gatewayNamespace }}
+      sectionName: cortex-https
+  hostnames: [{{ .Values.routing.hostname | quote }}]
+  rules:
+    - matches:
+        - path: {type: PathPrefix, value: /api}
+      backendRefs:
+        - {name: cortex-auth-api, port: 3001}
+    - matches:
+        - path: {type: PathPrefix, value: /}
+      backendRefs:
+        - {name: cortex-web, port: 3000}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: cortex-http-redirect
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  parentRefs:
+    - name: {{ .Values.routing.gatewayName }}
+      namespace: {{ .Values.routing.gatewayNamespace }}
+      sectionName: http
+  hostnames: [{{ .Values.routing.hostname | quote }}]
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect: {scheme: https, statusCode: 301}

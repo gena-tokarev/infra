@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cortex
+  namespace: argocd
+spec:
+  project: workloads
+  sources:
+    - repoURL: git@github.com:gena-tokarev/infra.git
+      targetRevision: main
+      path: charts/cortex
+      helm:
+        releaseName: cortex
+        valueFiles:
+          - $values/environments/development/cortex/values.yaml
+          - $values/environments/development/cortex/release.yaml
+    - repoURL: git@github.com:gena-tokarev/infra.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cortex
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry:
+      limit: 10
+      backoff: {duration: 10s, factor: 2, maxDuration: 3m}
+    syncOptions: [CreateNamespace=true, PruneLast=true]

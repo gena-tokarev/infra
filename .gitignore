@@ -1,1 +1,6 @@
 .env
+age.key
+*.dec.yaml
+*.secret.yaml
+!*.secret.example.yaml
+backups/

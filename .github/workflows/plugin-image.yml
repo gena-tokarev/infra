@@ -1,0 +1,77 @@
+name: Publish Argo CD SOPS plugin
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - tools/argocd-sops-plugin/**
+
+permissions:
+  contents: write
+  packages: write
+  attestations: write
+  id-token: write
+
+concurrency:
+  group: argocd-sops-plugin-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@371161bbe7024a29a25c5e19bfcbc0804fe9ad2c # v4.5.2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: tools/argocd-sops-plugin
+          file: tools/argocd-sops-plugin/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/gena-tokarev/argocd-sops-plugin:main
+          cache-from: type=gha,scope=argocd-sops-plugin
+          cache-to: type=gha,mode=max,scope=argocd-sops-plugin
+          provenance: mode=max
+          sbom: true
+
+      - name: Attest plugin image
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-name: ghcr.io/gena-tokarev/argocd-sops-plugin
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Pin published digest
+        env:
+          PLUGIN_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -eu
+          printf '%s\n' "$PLUGIN_DIGEST" | grep -Eq '^sha256:[0-9a-f]{64}$'
+          sed -i -E \
+            "s#image: ghcr.io/gena-tokarev/argocd-sops-plugin(:main|@sha256:[0-9a-f]{64})#image: ghcr.io/gena-tokarev/argocd-sops-plugin@$PLUGIN_DIGEST#" \
+            bootstrap/argocd/values.yaml
+          grep -F "image: ghcr.io/gena-tokarev/argocd-sops-plugin@$PLUGIN_DIGEST" bootstrap/argocd/values.yaml
+
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add bootstrap/argocd/values.yaml
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "build(argocd): pin SOPS plugin digest"
+          git push origin HEAD:main

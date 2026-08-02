@@ -1,0 +1,14 @@
+sourceSha: bootstrap
+web:
+  image:
+    repository: ghcr.io/gena-tokarev/podolog-web
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  replicas: 1
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+routing:
+  gatewayName: public
+  gatewayNamespace: gateway-system
+  hostname: podolog-warsaw.pl
+  wwwHostname: www.podolog-warsaw.pl

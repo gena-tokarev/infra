@@ -1,0 +1,5 @@
+sourceSha: bootstrap
+web:
+  image:
+    repository: ghcr.io/gena-tokarev/podolog-web
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
