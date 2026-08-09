@@ -1,0 +1,81 @@
+---
+- name: Create application namespaces
+  ansible.builtin.command: "kubectl create namespace {{ item }}"
+  loop:
+    - argocd
+    - cortex
+    - podolog
+    - gateway-system
+    - cnpg-system
+  register: kubernetes_secrets_namespace_create
+  changed_when: kubernetes_secrets_namespace_create.rc == 0
+  failed_when: >-
+    kubernetes_secrets_namespace_create.rc not in [0, 1] or
+    (kubernetes_secrets_namespace_create.rc == 1 and
+    'AlreadyExists' not in kubernetes_secrets_namespace_create.stderr)
+
+- name: Build Cortex runtime Secret in memory
+  ansible.builtin.set_fact:
+    kubernetes_secrets_cortex_manifest:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: cortex-runtime
+        namespace: cortex
+      type: Opaque
+      stringData: >-
+        {{ cortex_runtime_public | combine({
+          'POSTGRES_USER': cortex_postgres_user,
+          'POSTGRES_PASSWORD': vault_cortex_postgres_password,
+          'POSTGRES_DB': cortex_postgres_database,
+          'DATABASE_URL': vault_cortex_database_url,
+          'AUTH_ACCESS_TOKEN_SECRET': vault_auth_access_token_secret,
+          'AUTH_REFRESH_TOKEN_SECRET': vault_auth_refresh_token_secret,
+          'AUTH_EXTERNAL_AUTH_STATE_SECRET': vault_auth_external_state_secret,
+          'GOOGLE_CLIENT_ID': vault_google_client_id,
+          'GOOGLE_CLIENT_SECRET': vault_google_client_secret
+        }) }}
+  no_log: true
+
+- name: Build CloudNativePG application credentials Secret in memory
+  ansible.builtin.set_fact:
+    kubernetes_secrets_database_manifest:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: cortex-database-credentials
+        namespace: cortex
+        labels:
+          cnpg.io/reload: "true"
+      type: kubernetes.io/basic-auth
+      stringData:
+        username: "{{ cortex_postgres_user }}"
+        password: "{{ vault_cortex_postgres_password }}"
+  no_log: true
+
+- name: Stream Cortex runtime Secret directly to Kubernetes
+  ansible.builtin.command: kubectl apply -f -
+  args:
+    stdin: "{{ kubernetes_secrets_cortex_manifest | to_json }}"
+  register: kubernetes_secrets_cortex_apply
+  changed_when: >-
+    'created' in kubernetes_secrets_cortex_apply.stdout or
+    'configured' in kubernetes_secrets_cortex_apply.stdout
+  no_log: true
+
+- name: Stream CloudNativePG application credentials directly to Kubernetes
+  ansible.builtin.command: kubectl apply -f -
+  args:
+    stdin: "{{ kubernetes_secrets_database_manifest | to_json }}"
+  register: kubernetes_secrets_database_apply
+  changed_when: >-
+    'created' in kubernetes_secrets_database_apply.stdout or
+    'configured' in kubernetes_secrets_database_apply.stdout
+  no_log: true
+
+- name: Restart existing Cortex workloads after secret rotation  # noqa no-handler
+  ansible.builtin.command: kubectl -n cortex rollout restart deployment/cortex-auth-api
+  when: kubernetes_secrets_cortex_apply.changed
+  register: kubernetes_secrets_restart
+  changed_when: kubernetes_secrets_restart.rc == 0
+  failed_when: kubernetes_secrets_restart.rc not in [0, 1]

@@ -1,135 +1,36 @@
-global:
-  domain: argocd.podolog-warsaw.pl
-
 configs:
   cm:
-    url: https://argocd.podolog-warsaw.pl
+    url: http://localhost:8080
     admin.enabled: true
     users.anonymous.enabled: false
     exec.enabled: false
-    dex.config: |
-      connectors:
-        - type: github
-          id: github
-          name: GitHub
-          config:
-            clientID: $argocd-github-oauth:dex.github.clientID
-            clientSecret: $argocd-github-oauth:dex.github.clientSecret
-            useLoginAsID: true
   params:
     server.insecure: true
   rbac:
-    policy.default: ""
-    policy.csv: |
-      g, gena-tokarev, role:admin
-    scopes: "[groups]"
+    policy.default: role:readonly
+    policy.csv: ""
 
 server:
   service:
     type: ClusterIP
   resources:
-    requests:
-      cpu: 50m
-      memory: 96Mi
-    limits:
-      cpu: 500m
-      memory: 384Mi
+    requests: {cpu: 50m, memory: 96Mi}
+    limits: {cpu: 500m, memory: 384Mi}
 
 controller:
   resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 750m
-      memory: 768Mi
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: 750m, memory: 768Mi}
+
+dex:
+  enabled: false
 
 repoServer:
   resources:
-    requests:
-      cpu: 50m
-      memory: 128Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
-  extraContainers:
-    - name: cmp-sops
-      command:
-        - /var/run/argocd/argocd-cmp-server
-      image: ghcr.io/gena-tokarev/argocd-sops-plugin@sha256:08743da14c33e7595a56f3403c5296586747a0fa0b9c9e36b1af2efde04e6ba4
-      imagePullPolicy: IfNotPresent
-      env:
-        - name: SOPS_AGE_KEY_FILE
-          value: /sops-age/key.txt
-      securityContext:
-        allowPrivilegeEscalation: false
-        capabilities:
-          drop:
-            - ALL
-        readOnlyRootFilesystem: true
-        runAsNonRoot: true
-        runAsUser: 999
-        runAsGroup: 999
-        seccompProfile:
-          type: RuntimeDefault
-      resources:
-        requests:
-          cpu: 25m
-          memory: 32Mi
-        limits:
-          cpu: 200m
-          memory: 128Mi
-      volumeMounts:
-        - name: var-files
-          mountPath: /var/run/argocd
-        - name: plugins
-          mountPath: /home/argocd/cmp-server/plugins
-        - name: sops-plugin-config
-          mountPath: /home/argocd/cmp-server/config/plugin.yaml
-          subPath: plugin.yaml
-          readOnly: true
-        - name: sops-age
-          mountPath: /sops-age
-          readOnly: true
-        - name: sops-tmp
-          mountPath: /tmp
-  volumes:
-    - name: sops-plugin-config
-      configMap:
-        name: argocd-cmp-sops
-    - name: sops-age
-      secret:
-        secretName: argocd-sops-age
-        defaultMode: 0444
-    - name: sops-tmp
-      emptyDir:
-        sizeLimit: 64Mi
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
 
 redis:
   resources:
-    requests:
-      cpu: 25m
-      memory: 64Mi
-    limits:
-      cpu: 250m
-      memory: 256Mi
-
-extraObjects:
-  - apiVersion: v1
-    kind: ConfigMap
-    metadata:
-      name: argocd-cmp-sops
-      namespace: argocd
-    data:
-      plugin.yaml: |
-        apiVersion: argoproj.io/v1alpha1
-        kind: ConfigManagementPlugin
-        metadata:
-          name: sops-yaml
-        spec:
-          version: v1
-          discover:
-            find:
-              command: [sh, -c, "find . -type f -name '*.sops.yaml' -print -quit | grep -q ."]
-          generate:
-            command: [/usr/local/bin/generate-manifests]
+    requests: {cpu: 25m, memory: 64Mi}
+    limits: {cpu: 250m, memory: 256Mi}

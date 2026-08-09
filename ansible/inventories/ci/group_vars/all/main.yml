@@ -1,0 +1,15 @@
+environment_name: ci
+infra_repository_url: git@github.com:gena-tokarev/infra.git
+infra_repository_revision: main
+vault_argocd_admin_password: CI_ONLY_PASSWORD
+vault_argocd_admin_password_hash: "$2b$12$CI_ONLY_NOT_A_REAL_PASSWORD_HASH0000000000000000000000000"
+vault_argocd_repository_private_key: CI_ONLY
+cortex_postgres_user: cortex
+cortex_postgres_database: cortex_auth
+vault_cortex_postgres_password: ci
+vault_cortex_database_url: postgresql://cortex:ci@cortex-postgres-rw:5432/cortex_auth?schema=public
+vault_auth_access_token_secret: CI_ONLY
+vault_auth_refresh_token_secret: CI_ONLY
+vault_auth_external_state_secret: CI_ONLY
+vault_google_client_id: CI_ONLY
+vault_google_client_secret: CI_ONLY

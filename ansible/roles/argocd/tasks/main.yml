@@ -1,0 +1,64 @@
+---
+- name: Stream Argo CD repository credential directly to Kubernetes
+  ansible.builtin.command: kubectl apply -f -
+  args:
+    stdin: >-
+      {{ {
+        'apiVersion': 'v1',
+        'kind': 'Secret',
+        'metadata': {
+          'name': 'infra-repository',
+          'namespace': 'argocd',
+          'labels': {'argocd.argoproj.io/secret-type': 'repository'}
+        },
+        'type': 'Opaque',
+        'stringData': {
+          'type': 'git',
+          'url': infra_repository_url,
+          'sshPrivateKey': vault_argocd_repository_private_key
+        }
+      } | to_json }}
+  register: argocd_repository_secret
+  changed_when: "'created' in argocd_repository_secret.stdout or 'configured' in argocd_repository_secret.stdout"
+  no_log: true
+
+- name: Add the pinned Argo CD chart repository
+  ansible.builtin.command: helm repo add argo https://argoproj.github.io/argo-helm --force-update
+  register: argocd_argo_repo
+  changed_when: "'has been added' in argocd_argo_repo.stdout or 'has been updated' in argocd_argo_repo.stdout"
+
+- name: Update Helm repository indexes
+  ansible.builtin.command: helm repo update argo
+  changed_when: false
+
+- name: Install non-secret Argo CD values on the target
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../bootstrap/argocd/values.yaml"
+    dest: "{{ managed_path }}/argocd-values.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Install private Argo CD with its Vault-managed administrator
+  ansible.builtin.command: >-
+    helm upgrade --install argocd argo/argo-cd
+    --namespace argocd
+    --version {{ argocd_chart_version }}
+    --values {{ managed_path }}/argocd-values.yaml
+    --values -
+    --wait --timeout 10m
+  args:
+    stdin: >-
+      {{ {'configs': {'secret': {
+        'argocdServerAdminPassword': vault_argocd_admin_password_hash,
+        'argocdServerAdminPasswordMtime': '2026-08-09T00:00:00Z'
+      }}} | to_nice_yaml }}
+  register: argocd_helm
+  changed_when: "'has been upgraded' in argocd_helm.stdout or 'has been installed' in argocd_helm.stdout"
+  no_log: true
+
+- name: Confirm Argo CD is internal only
+  ansible.builtin.command: kubectl -n argocd get service argocd-server -o jsonpath={.spec.type}
+  register: argocd_service_type
+  changed_when: false
+  failed_when: argocd_service_type.stdout != 'ClusterIP'

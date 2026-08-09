@@ -4,7 +4,6 @@ resources:
   - projects.yaml
   - gateway-api.yaml
   - cert-manager.yaml
+  - cloudnative-pg.yaml
   - platform-config.yaml
-  - argocd.yaml
-  - argocd-secrets.yaml
   - cortex-data.yaml

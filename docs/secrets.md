@@ -1,49 +1,46 @@
-# SOPS and age setup
+# Secrets with Ansible Vault
 
-Run these commands on a trusted local machine, not on the VPS:
-
-```bash
-age-keygen -o age.key
-age-keygen -y age.key
-cp .sops.yaml.example .sops.yaml
-```
-
-Replace the recipient in `.sops.yaml` with the `age1...` public value. Back up
-`age.key` in a password manager; it is ignored by Git and must never be committed.
-
-Create the Cortex secret:
+`ansible/inventories/development/group_vars/all/vault.yml` is the only tracked
+secret file. It must be encrypted as a whole with Ansible Vault. The password is
+entered locally and must be backed up in a password manager; it is never put on
+the VPS or in GitHub Actions.
 
 ```bash
-cp examples/cortex-runtime.secret.example.yaml cortex-runtime.secret.yaml
-${EDITOR:-vi} cortex-runtime.secret.yaml
-grep -q REPLACE_WITH cortex-runtime.secret.yaml && exit 1
-sops --encrypt \
-  --filename-override environments/development/cortex/secrets/data/cortex-runtime.sops.yaml \
-  cortex-runtime.secret.yaml \
-  > environments/development/cortex/secrets/data/cortex-runtime.sops.yaml
-rm cortex-runtime.secret.yaml
+make ansible-setup
+make vault-create
+make vault-edit
 ```
 
-Create the Argo OAuth secret:
+Fill every value from `ansible/vault.example.yml`. Keep the Argo administrator
+password and the bcrypt hash generated from that same password in the Vault;
+preflight verifies that they match. Generate it without placing the password in
+shell history by running `make argocd-password-hash`. Generate a
+dedicated SSH deploy key for Argo; put its private half in the Vault and add only
+the public half to the private infra repository with read-only access.
+
+Generate that dedicated key locally (it is separate from your VPS login key):
 
 ```bash
-cp examples/argocd-github-oauth.secret.example.yaml argocd-github-oauth.secret.yaml
-${EDITOR:-vi} argocd-github-oauth.secret.yaml
-grep -q REPLACE_WITH argocd-github-oauth.secret.yaml && exit 1
-sops --encrypt \
-  --filename-override environments/development/argocd/secrets/github-oauth.sops.yaml \
-  argocd-github-oauth.secret.yaml \
-  > environments/development/argocd/secrets/github-oauth.sops.yaml
-rm argocd-github-oauth.secret.yaml
+key_dir=$(mktemp -d)
+ssh-keygen -t ed25519 -N '' -C argocd-infra-readonly -f "$key_dir/argocd-infra"
+cat "$key_dir/argocd-infra.pub"
+cat "$key_dir/argocd-infra"
 ```
 
-Verify and commit only ciphertext and the public SOPS policy:
+Paste the public output into **infra → Settings → Deploy keys** without write
+access, and paste the private output into
+`vault_argocd_repository_private_key` using `make vault-edit`. Then securely
+delete that temporary directory after confirming the encrypted Vault is backed
+up. Do not reuse the GitHub App key or the VPS login key.
 
-```bash
-sops --decrypt environments/development/cortex/secrets/data/cortex-runtime.sops.yaml >/dev/null
-sops --decrypt environments/development/argocd/secrets/github-oauth.sops.yaml >/dev/null
-git add .sops.yaml environments/development
-git diff --cached
-git commit -m 'chore: add encrypted cluster secrets'
-git push
-```
+Ansible streams Kubernetes Secret manifests to `kubectl apply -f -`; it does not
+write plaintext manifests locally or remotely. Secret-bearing tasks use
+`no_log: true`, and k3s encrypts Kubernetes Secrets at rest with `secretbox`.
+
+Rotate values with `make vault-edit`, commit the new ciphertext, then run
+`make bootstrap`. Ansible reapplies both Kubernetes Secrets and restarts existing
+Cortex workloads in a controlled rollout. CloudNativePG watches the labelled
+`kubernetes.io/basic-auth` Secret and reconciles the database-role password.
+The role (`cortex`) and database name (`cortex_auth`) are non-secret Git-managed
+configuration. Changing either is a data migration and is intentionally not
+automated.

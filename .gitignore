@@ -4,3 +4,10 @@ age.key
 *.secret.yaml
 !*.secret.example.yaml
 backups/
+ansible/.venv/
+.ansible-tmp/
+ansible/.ansible-tmp/
+ansible/.ansible-home/
+ansible/.cache/
+ansible/.tools/
+docs

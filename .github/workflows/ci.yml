@@ -2,8 +2,7 @@ name: Validate infra
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
 
 permissions:
@@ -12,7 +11,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -20,11 +19,14 @@ jobs:
       - name: Set up Helm
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
         with:
-          version: v3.20.0
+          version: v4.2.3
 
-      - name: Install actionlint
+      - name: Install validation tools
         run: |
           set -eu
+          python3 -m venv ansible/.venv
+          ansible/.venv/bin/pip install --requirement ansible/requirements.txt
+          echo "$GITHUB_WORKSPACE/ansible/.venv/bin" >> "$GITHUB_PATH"
           curl --fail --silent --show-error --location \
             https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz \
             --output actionlint.tar.gz
@@ -32,21 +34,13 @@ jobs:
             sha256sum --check
           tar -xzf actionlint.tar.gz actionlint
 
-      - name: Validate workflows
-        run: ./actionlint .github/workflows/*.yml
+      - name: Validate workflows and Ansible
+        env:
+          ANSIBLE_CONFIG: ansible/ansible.cfg
+        run: |
+          ./actionlint .github/workflows/*.yml
+          ansible-lint ansible/playbooks/*.yml
+          ansible-playbook -i ansible/inventories/ci/hosts.yml ansible/playbooks/bootstrap.yml --syntax-check
 
-      - name: Validate repository
+      - name: Validate rendered infrastructure
         run: ./scripts/validate.sh
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
-
-      - name: Build SOPS plugin
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          context: tools/argocd-sops-plugin
-          file: tools/argocd-sops-plugin/Dockerfile
-          platforms: linux/amd64
-          push: false
-          cache-from: type=gha,scope=argocd-sops-plugin
-          cache-to: type=gha,mode=max,scope=argocd-sops-plugin

@@ -3,19 +3,16 @@ kind: Application
 metadata:
   name: cortex-data
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   project: workloads
-  sources:
-    - repoURL: git@github.com:gena-tokarev/infra.git
-      targetRevision: main
-      path: charts/cortex-data
-      helm:
-        releaseName: cortex-data
-    - repoURL: git@github.com:gena-tokarev/infra.git
-      targetRevision: main
-      path: environments/development/cortex/secrets/data
-      plugin:
-        name: sops-yaml-v1
+  source:
+    repoURL: git@github.com:gena-tokarev/infra.git
+    targetRevision: main
+    path: charts/cortex-data
+    helm:
+      releaseName: cortex-data
   destination:
     server: https://kubernetes.default.svc
     namespace: cortex

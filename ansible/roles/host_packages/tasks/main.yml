@@ -1,0 +1,13 @@
+---
+- name: Install required host packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gzip
+      - openssh-client
+      - python3
+      - tar
+    state: present
+    update_cache: true
+    cache_valid_time: 3600

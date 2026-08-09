@@ -4,7 +4,7 @@ metadata:
   name: letsencrypt-production
 spec:
   acme:
-    email: REPLACE_WITH_LETSENCRYPT_EMAIL
+    email: gennadii.tokariev@gmail.com
     server: https://acme-v02.api.letsencrypt.org/directory
     privateKeySecretRef:
       name: letsencrypt-production-account
@@ -42,16 +42,3 @@ spec:
     kind: ClusterIssuer
   dnsNames:
     - cortex-dev.podolog-warsaw.pl
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: argocd
-  namespace: gateway-system
-spec:
-  secretName: argocd-tls
-  issuerRef:
-    name: letsencrypt-production
-    kind: ClusterIssuer
-  dnsNames:
-    - argocd.podolog-warsaw.pl

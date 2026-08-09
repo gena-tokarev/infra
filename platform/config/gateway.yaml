@@ -49,12 +49,3 @@ spec:
         certificateRefs:
           - {kind: Secret, name: cortex-tls}
       allowedRoutes: *allowedRoutes
-    - name: argocd-https
-      protocol: HTTPS
-      port: 443
-      hostname: argocd.podolog-warsaw.pl
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - {kind: Secret, name: argocd-tls}
-      allowedRoutes: *allowedRoutes

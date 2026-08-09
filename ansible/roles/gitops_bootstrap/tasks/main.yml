@@ -1,0 +1,64 @@
+---
+- name: Apply the platform root Application
+  ansible.builtin.command: kubectl apply -f -
+  args:
+    stdin: "{{ lookup('ansible.builtin.file', playbook_dir + '/../../bootstrap/platform-root.yaml') }}"
+  register: gitops_bootstrap_platform_root
+  changed_when: "'created' in gitops_bootstrap_platform_root.stdout or 'configured' in gitops_bootstrap_platform_root.stdout"
+
+- name: Wait for the platform root to create the CloudNativePG Application
+  ansible.builtin.command: kubectl -n argocd get application/cloudnative-pg
+  register: gitops_bootstrap_cnpg_application
+  retries: 60
+  delay: 5
+  until: gitops_bootstrap_cnpg_application.rc == 0
+  changed_when: false
+
+- name: Wait for CloudNativePG Application to synchronize
+  ansible.builtin.command: >-
+    kubectl -n argocd wait --for=jsonpath='{.status.sync.status}'=Synced
+    application/cloudnative-pg --timeout=10m
+  changed_when: false
+
+- name: Wait for CloudNativePG operator
+  ansible.builtin.command: kubectl -n cnpg-system rollout status deployment/cnpg-cloudnative-pg --timeout=10m
+  changed_when: false
+
+- name: Wait for remaining platform Applications to synchronize
+  ansible.builtin.command: >-
+    kubectl -n argocd wait --for=jsonpath='{.status.sync.status}'=Synced
+    application/{{ item }} --timeout=10m
+  loop:
+    - gateway-api
+    - cert-manager
+    - platform-config
+    - cortex-data
+  changed_when: false
+
+- name: Wait for CloudNativePG database readiness
+  ansible.builtin.command: >-
+    kubectl -n cortex wait --for=condition=Ready
+    cluster.postgresql.cnpg.io/cortex-postgres --timeout=10m
+  changed_when: false
+
+- name: Wait for ephemeral Redis
+  ansible.builtin.command: kubectl -n cortex rollout status deployment/cortex-redis --timeout=10m
+  changed_when: false
+
+- name: Apply the workload root Application
+  ansible.builtin.command: kubectl apply -f -
+  args:
+    stdin: "{{ lookup('ansible.builtin.file', playbook_dir + '/../../bootstrap/workloads-root.yaml') }}"
+  register: gitops_bootstrap_workloads_root
+  changed_when: >-
+    'created' in gitops_bootstrap_workloads_root.stdout or
+    'configured' in gitops_bootstrap_workloads_root.stdout
+
+- name: Wait for workload Applications to synchronize
+  ansible.builtin.command: >-
+    kubectl -n argocd wait --for=jsonpath='{.status.sync.status}'=Synced
+    application/{{ item }} --timeout=10m
+  loop:
+    - cortex
+    - podolog
+  changed_when: false

@@ -1,0 +1,58 @@
+---
+- name: Wait for application rollouts
+  ansible.builtin.command: "kubectl -n {{ item.namespace }} rollout status {{ item.resource }} --timeout=10m"
+  loop:
+    - {namespace: cortex, resource: deployment/cortex-auth-api}
+    - {namespace: cortex, resource: deployment/cortex-web}
+    - {namespace: podolog, resource: deployment/podolog-web}
+  changed_when: false
+
+- name: Wait for Traefik and the public Gateway
+  ansible.builtin.command: "{{ item }}"
+  loop:
+    - kubectl -n kube-system rollout status deployment/traefik --timeout=10m
+    - kubectl -n gateway-system wait --for=condition=Programmed gateway/public --timeout=10m
+  changed_when: false
+
+- name: Wait for public certificates issued by cert-manager
+  ansible.builtin.command: >-
+    kubectl -n gateway-system wait --for=condition=Ready certificate/{{ item }} --timeout=10m
+  loop:
+    - podolog
+    - cortex
+  changed_when: false
+
+- name: Verify Cortex readiness from the host without exposing it publicly
+  ansible.builtin.shell: |
+    set -euo pipefail
+    kubectl -n cortex port-forward service/cortex-auth-api 13001:3001 >/tmp/cortex-port-forward.log 2>&1 &
+    forward_pid=$!
+    trap 'kill "$forward_pid" 2>/dev/null || true' EXIT
+    for attempt in $(seq 1 30); do
+      if curl --fail --silent http://127.0.0.1:13001/api/health >/dev/null; then
+        exit 0
+      fi
+      sleep 1
+    done
+    exit 1
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Verify k3s secret encryption is active
+  ansible.builtin.command: k3s secrets-encrypt status
+  register: verification_encryption_status
+  changed_when: false
+  failed_when: "'Encryption Status: Enabled' not in verification_encryption_status.stdout"
+
+- name: Validate public HTTPS endpoints
+  ansible.builtin.uri:
+    url: "{{ item }}"
+    method: GET
+    status_code: 200
+    validate_certs: true
+  loop:
+    - "https://{{ podolog_hostname }}"
+    - "https://{{ cortex_hostname }}/api/health"
+  delegate_to: localhost
+  become: false

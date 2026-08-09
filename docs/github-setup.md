@@ -1,66 +1,23 @@
 # GitHub setup
 
-## DNS and OAuth
+Cortex and Podolog each need their release-promotion GitHub App values in the
+environment used by their publishing workflow:
 
-Create these DNS records:
+- `INFRA_APP_ID` as an environment variable
+- `INFRA_APP_PRIVATE_KEY` as an environment secret
 
-```text
-argocd.podolog-warsaw.pl A 167.233.59.107
-cortex-dev.podolog-warsaw.pl A 167.233.59.107
-```
+The App should be installed only on `gena-tokarev/infra` with repository contents
+read/write and no other permissions. These CI credentials remain in GitHub;
+Ansible Vault does not replace them.
 
-Keep the old `focoris-dev.podolog-warsaw.pl` record during the rollback window.
-It can be removed after the Cortex cutover is accepted.
+Argo CD uses a separate read-only SSH deploy key. Its private half is stored in
+the encrypted Ansible Vault, and its public half is registered under the infra
+repository's Deploy keys.
 
-Create a GitHub OAuth App under **Settings → Developer settings → OAuth Apps**:
+No VPS, SSH, Kubernetes, Argo CD, Ansible Vault, SOPS, or age credential belongs
+in GitHub Actions. The application GHCR packages remain public so k3s can pull
+images without registry credentials.
 
-```text
-Homepage URL: https://argocd.podolog-warsaw.pl
-Authorization callback URL: https://argocd.podolog-warsaw.pl/api/dex/callback
-```
-
-Use its client ID and client secret when creating the encrypted Argo CD Secret.
-
-Update the Cortex Google OAuth client configuration as well:
-
-```text
-Authorized redirect URI:
-https://cortex-dev.podolog-warsaw.pl/api/external-auth/google/callback
-
-Authorized JavaScript origin:
-https://cortex-dev.podolog-warsaw.pl
-```
-
-## Release promotion GitHub App
-
-Create one GitHub App with repository **Contents: Read and write**, install it only
-on `gena-tokarev/infra`, and generate one private key.
-
-In the infra repository, set **Settings → Actions → General → Workflow
-permissions** to **Read and write permissions** so the plugin image workflow can
-pin its published digest back into this repository.
-
-In Cortex's `development` environment add:
-
-```text
-Variable INFRA_APP_ID
-Secret   INFRA_APP_PRIVATE_KEY
-```
-
-In Podolog's `production` environment add the same two entries plus:
-
-```text
-NEXT_PUBLIC_SITE_URL=https://podolog-warsaw.pl
-NEXT_PUBLIC_BOOKSY_URL=<current public Booksy URL>
-NEXT_PUBLIC_FACEBOOK_URL=<current public Facebook URL or empty>
-NEXT_PUBLIC_INSTAGRAM_URL=<current public Instagram URL or empty>
-```
-
-The application environments no longer need any `DEPLOY_*` values.
-
-After first publication, make these GHCR packages public:
-
-- `cortex-auth-api`
-- `cortex-web`
-- `podolog-web`
-- `argocd-sops-plugin`
+Remove the obsolete `argocd.podolog-warsaw.pl` DNS record and GitHub OAuth App
+after tunnel access is verified. The obsolete `argocd-sops-plugin` GHCR package
+can also be deleted manually.

@@ -1,0 +1,21 @@
+---
+- name: Provision the complete k3s GitOps environment
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - preflight
+    - host_packages
+    - helm
+    - k3s
+    - kubernetes_secrets
+    - argocd
+    - gitops_bootstrap
+    - verification
+  post_tasks:
+    - name: Print access and diagnostic commands
+      ansible.builtin.debug:
+        msg:
+          - "The k3s environment is provisioned and Traefik owns public routing."
+          - "Open Argo CD locally with: make argocd-tunnel"
+          - "Inspect the cluster with: ssh deploy@{{ ansible_host }} kubectl get pods -A"

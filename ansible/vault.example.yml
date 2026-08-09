@@ -1,0 +1,19 @@
+---
+# Copying this file is handled by `make vault-create`; the resulting vault.yml
+# must remain encrypted in Git. Generate the bcrypt hash with:
+# make argocd-password-hash
+vault_argocd_admin_password: REPLACE_WITH_ARGOCD_ADMIN_PASSWORD
+vault_argocd_admin_password_hash: REPLACE_WITH_BCRYPT_HASH_OF_THE_SAME_PASSWORD
+vault_argocd_repository_private_key: |
+  REPLACE_WITH_OPENSSH_PRIVATE_DEPLOY_KEY
+
+vault_cortex_postgres_password: REPLACE_WITH_POSTGRES_PASSWORD
+# URL-encode special characters in the password. Keep the host/service exactly
+# as cortex-postgres-rw, matching the service managed by CloudNativePG.
+vault_cortex_database_url: postgresql://cortex:REPLACE_WITH_URL_ENCODED_PASSWORD@cortex-postgres-rw:5432/cortex_auth?schema=public
+
+vault_auth_access_token_secret: REPLACE_WITH_ACCESS_TOKEN_SECRET
+vault_auth_refresh_token_secret: REPLACE_WITH_REFRESH_TOKEN_SECRET
+vault_auth_external_state_secret: REPLACE_WITH_EXTERNAL_AUTH_STATE_SECRET
+vault_google_client_id: REPLACE_WITH_GOOGLE_CLIENT_ID
+vault_google_client_secret: REPLACE_WITH_GOOGLE_CLIENT_SECRET

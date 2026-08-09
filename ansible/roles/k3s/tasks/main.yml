@@ -1,0 +1,74 @@
+---
+- name: Create k3s configuration directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Create protected infrastructure state directory
+  ansible.builtin.file:
+    path: "{{ managed_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Install the complete Traefik-enabled k3s configuration
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../bootstrap/k3s/config.yaml"
+    dest: /etc/rancher/k3s/config.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  register: k3s_active_config
+
+- name: Download the verified k3s installer
+  ansible.builtin.get_url:
+    url: "{{ k3s_installer_url }}"
+    dest: /tmp/install-k3s.sh
+    checksum: "sha256:{{ k3s_installer_sha256 }}"
+    mode: "0700"
+
+- name: Install pinned k3s with packaged Traefik
+  ansible.builtin.command: /tmp/install-k3s.sh
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+    INSTALL_K3S_EXEC: server
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: Restart k3s when its configuration changes  # noqa no-handler
+  ansible.builtin.systemd_service:
+    name: k3s
+    state: restarted
+    enabled: true
+  when: k3s_active_config.changed
+
+- name: Ensure k3s is running
+  ansible.builtin.systemd_service:
+    name: k3s
+    state: started
+    enabled: true
+
+- name: Wait for the k3s node
+  ansible.builtin.command: kubectl wait --for=condition=Ready node --all --timeout=180s
+  changed_when: false
+
+- name: Create deploy kubeconfig directory
+  ansible.builtin.file:
+    path: /home/deploy/.kube
+    state: directory
+    owner: deploy
+    group: deploy
+    mode: "0700"
+
+- name: Install passwordless local kubeconfig for deploy
+  ansible.builtin.copy:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: /home/deploy/.kube/config
+    remote_src: true
+    owner: deploy
+    group: deploy
+    mode: "0600"

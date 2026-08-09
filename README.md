@@ -1,50 +1,66 @@
-# VPS GitOps infrastructure
+# k3s GitOps infrastructure
 
-This private repository is the desired state for the single-node k3s cluster on
-`167.233.59.107`. Argo CD pulls it with a read-only deploy key; application CI
-never connects to the VPS or Kubernetes.
+This private repository provisions the complete single-node development cluster
+at `167.233.59.107`. It treats the host as a generic server: Ansible has no
+knowledge of existing Docker projects, directories, volumes, databases, proxy
+configuration, certificates, or rollback procedures.
+
+Application CI publishes immutable public GHCR images and updates their digests
+in this repository. Argo CD reconciles those releases but is not public; access
+it through an SSH tunnel at `http://localhost:8080`.
+
+## Setup
+
+1. Install the pinned local tools:
+
+   ```bash
+   make ansible-setup
+   ```
+
+2. Set the same real `letsencrypt_email` in:
+
+   - `ansible/inventories/development/group_vars/all/main.yml`
+   - `platform/config/certificates.yaml`
+
+3. Create and fill the encrypted development Vault:
+
+   ```bash
+   make vault-create
+   make vault-edit
+   ```
+
+   Commit only the encrypted `vault.yml`; keep its password in a password
+   manager. Follow [Secrets](docs/secrets.md) for the Argo repository key.
+
+4. Ensure Cortex and Podolog CI have promoted real, non-placeholder image
+   digests.
+
+5. Follow the manual host preparation in [Migration](docs/migration.md). Existing
+   services must release ports 80 and 443 before provisioning.
+
+6. Validate and provision everything:
+
+   ```bash
+   make ansible-check
+   make bootstrap
+   make argocd-tunnel
+   ```
+
+`make bootstrap` installs pinned k3s with packaged Traefik enabled immediately,
+installs CloudNativePG with a single PostgreSQL instance and an ephemeral Redis,
+installs private Argo CD, applies
+Vault-backed Kubernetes Secrets, synchronizes Cortex and Podolog, waits for
+certificates, and checks the public HTTPS endpoints. It is idempotent and does
+not call Docker.
 
 ## Public endpoints
 
 | Host | Workload |
 | --- | --- |
-| `podolog-warsaw.pl` | Podolog Next.js site |
+| `podolog-warsaw.pl` | Podolog web |
 | `www.podolog-warsaw.pl` | Redirect to the apex host |
-| `cortex-dev.podolog-warsaw.pl/api/*` | Cortex auth API |
-| `cortex-dev.podolog-warsaw.pl/*` | Cortex web app |
-| `argocd.podolog-warsaw.pl` | Argo CD with GitHub login |
+| `cortex-dev.podolog-warsaw.pl/api/*` | Cortex API |
+| `cortex-dev.podolog-warsaw.pl/*` | Cortex web |
 
-## Release flow
-
-1. An application workflow validates and publishes a public GHCR image.
-2. The workflow's narrowly scoped GitHub App commits the immutable digest here.
-3. Argo CD detects the commit, runs any migration hook, and reconciles k3s.
-4. Rollback is a Git revert of the relevant release file.
-
-The SOPS age identity and Argo repository private key exist only in Kubernetes
-and offline recovery storage. Git contains only encrypted application secrets.
-
-## One-time setup
-
-Follow these documents in order:
-
-1. [GitHub and DNS setup](docs/github-setup.md)
-2. [SOPS and age setup](docs/secrets.md)
-3. [VPS bootstrap and cutover](docs/cutover.md)
-4. [Rollback](docs/rollback.md)
-
-Before bootstrapping, publish the SOPS plugin workflow, make its GHCR package
-public, replace `REPLACE_WITH_LETSENCRYPT_EMAIL`, and confirm
-`bootstrap/argocd/values.yaml` contains a plugin image pinned by `@sha256:`.
-
-## Validation
-
-CI runs the same entrypoint locally:
-
-```bash
-./scripts/validate.sh
-```
-
-It lints and renders Helm charts, renders Kustomize roots, schema-checks the
-manifests, parses shell scripts, and rejects tracked age identities or malformed
-SOPS files.
+Additional guides: [database operations](docs/database.md),
+[GitHub setup](docs/github-setup.md), and [rollback](docs/rollback.md).

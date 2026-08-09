@@ -1,3 +1,0 @@
-write-kubeconfig-mode: "0600"
-disable:
-  - traefik

@@ -1,0 +1,132 @@
+---
+- name: Validate target operating system and capacity
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == 'Debian'
+      - ansible_architecture in ['x86_64', 'amd64']
+      - ansible_processor_vcpus | int >= 2
+      - ansible_memtotal_mb | int >= 3500
+      - ansible_mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_available') | first | int >= 10737418240
+    fail_msg: The target must be an x86_64 Debian/Ubuntu host with at least 2 CPUs, 3.5 GiB RAM and 10 GiB free disk.
+
+- name: Verify sudo works
+  ansible.builtin.command: /usr/bin/true
+  changed_when: false
+
+- name: Read host service state
+  ansible.builtin.service_facts:
+
+- name: Record whether k3s is already active
+  ansible.builtin.set_fact:
+    preflight_k3s_active: >-
+      {{ 'k3s.service' in ansible_facts.services and
+      ansible_facts.services['k3s.service'].state == 'running' }}
+
+- name: Check whether this cluster already owns Traefik
+  ansible.builtin.command: kubectl -n kube-system get deployment traefik
+  register: preflight_traefik_exists
+  when: preflight_k3s_active
+  changed_when: false
+  failed_when: preflight_traefik_exists.rc not in [0, 1]
+
+- name: Inspect public ports
+  ansible.builtin.shell: ss -H -ltn '( sport = :80 or sport = :443 )'
+  args:
+    executable: /bin/bash
+  register: preflight_public_ports
+  changed_when: false
+
+- name: Require free public ports for a new cluster
+  ansible.builtin.assert:
+    that: >-
+      preflight_public_ports.stdout | trim | length == 0 or
+      (preflight_k3s_active and
+      preflight_traefik_exists.rc | default(1) == 0)
+    fail_msg: >-
+      Ports 80/443 are occupied by something other than this k3s cluster.
+      Stop the existing services manually, verify the ports are free, and rerun bootstrap.
+
+- name: Read immutable release files on the controller
+  ansible.builtin.set_fact:
+    preflight_release_files_text: >-
+      {{ lookup('ansible.builtin.file', playbook_dir + '/../../environments/development/cortex/release.yaml')
+         + lookup('ansible.builtin.file', playbook_dir + '/../../environments/development/podolog/release.yaml') }}
+  delegate_to: localhost
+  become: false
+
+- name: Reject bootstrap image placeholders
+  ansible.builtin.assert:
+    that:
+      - "'sha256:' + ('0' * 64) not in preflight_release_files_text"
+      - preflight_release_files_text | regex_findall('sha256:[0-9a-f]{64}') | length == 3
+    fail_msg: Application CI must publish and promote all three non-placeholder image digests first.
+
+- name: Validate required public configuration
+  ansible.builtin.assert:
+    that:
+      - letsencrypt_email is defined
+      - "'REPLACE_WITH' not in letsencrypt_email"
+      - infra_repository_url == 'git@github.com:gena-tokarev/infra.git'
+
+- name: Verify the GitOps certificate issuer uses the inventory email
+  ansible.builtin.assert:
+    that: >-
+      ('email: ' + letsencrypt_email) in
+      lookup('ansible.builtin.file', playbook_dir + '/../../platform/config/certificates.yaml')
+    fail_msg: Set the same non-placeholder Let's Encrypt email in inventory and platform/config/certificates.yaml.
+  delegate_to: localhost
+  become: false
+
+- name: Validate Vault values without logging them
+  ansible.builtin.assert:
+    that:
+      - item is string
+      - item | length > 0
+      - "'REPLACE_WITH' not in item"
+  loop:
+    - "{{ vault_argocd_admin_password_hash }}"
+    - "{{ vault_argocd_admin_password }}"
+    - "{{ vault_argocd_repository_private_key }}"
+    - "{{ vault_cortex_postgres_password }}"
+    - "{{ vault_cortex_database_url }}"
+    - "{{ vault_auth_access_token_secret }}"
+    - "{{ vault_auth_refresh_token_secret }}"
+    - "{{ vault_auth_external_state_secret }}"
+    - "{{ vault_google_client_id }}"
+    - "{{ vault_google_client_secret }}"
+  no_log: true
+
+- name: Enforce minimum secret strength and repository key format
+  ansible.builtin.assert:
+    that:
+      - vault_argocd_admin_password | length >= 12
+      - vault_cortex_postgres_password | length >= 16
+      - vault_cortex_database_url is match('^postgresql://[^@]+@cortex-postgres-rw:5432/cortex_auth\?schema=public$')
+      - vault_auth_access_token_secret | length >= 32
+      - vault_auth_refresh_token_secret | length >= 32
+      - vault_auth_external_state_secret | length >= 32
+      - "'BEGIN OPENSSH PRIVATE KEY' in vault_argocd_repository_private_key"
+    fail_msg: Vault values are invalid, the database URL targets the wrong service, or the Argo repository key is not an OpenSSH private key.
+  no_log: true
+
+- name: Validate the Argo CD bcrypt hash
+  ansible.builtin.assert:
+    that: vault_argocd_admin_password_hash is match('^\$2[aby]\$[0-9]{2}\$.{53}$')
+    fail_msg: vault_argocd_admin_password_hash must be a valid bcrypt hash.
+  no_log: true
+
+- name: Verify the Argo CD password matches its bcrypt hash
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_playbook_python }}"
+      - -c
+      - >-
+        import sys; from passlib.hash import bcrypt;
+        raise SystemExit(0 if bcrypt.verify(sys.stdin.readline().rstrip('\n'),
+        sys.stdin.readline().rstrip('\n')) else 1)
+  args:
+    stdin: "{{ vault_argocd_admin_password }}\n{{ vault_argocd_admin_password_hash }}\n"
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  no_log: true

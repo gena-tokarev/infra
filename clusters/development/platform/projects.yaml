@@ -7,8 +7,8 @@ spec:
   description: Cluster-level controllers and shared routing
   sourceRepos:
     - git@github.com:gena-tokarev/infra.git
-    - https://argoproj.github.io/argo-helm
     - https://charts.jetstack.io
+    - https://cloudnative-pg.github.io/charts
     - https://github.com/kubernetes-sigs/gateway-api.git
   destinations:
     - namespace: '*'
