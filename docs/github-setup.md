@@ -3,7 +3,7 @@
 Cortex and Podolog each need their release-promotion GitHub App values in the
 environment used by their publishing workflow:
 
-- `INFRA_APP_ID` as an environment variable
+- `INFRA_APP_CLIENT_ID` as an environment variable
 - `INFRA_APP_PRIVATE_KEY` as an environment secret
 
 The App should be installed only on `gena-tokarev/infra` with repository contents
