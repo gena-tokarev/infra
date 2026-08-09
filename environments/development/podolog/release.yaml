@@ -1,5 +1,5 @@
-sourceSha: bootstrap
+sourceSha: "5b17e7d97c4c4d82b53660eb095ec86e56405413"
 web:
   image:
     repository: ghcr.io/gena-tokarev/podolog-web
-    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+    digest: "sha256:901b06aae600ae47369a29477e5f8a4251810a71cf3486358d51066e0049ec61"
