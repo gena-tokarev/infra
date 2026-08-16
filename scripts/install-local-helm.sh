@@ -20,7 +20,7 @@ case "$os/$arch" in
     ;;
 esac
 
-repo_root=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+repo_root=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
 tools_dir="$repo_root/ansible/.tools"
 helm_bin="$tools_dir/helm"
 
