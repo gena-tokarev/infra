@@ -65,7 +65,7 @@ fi
 
 vault_file=ansible/inventories/development/group_vars/all/vault.yml
 if test -f "$vault_file"; then
-  head -n 1 "$vault_file" | grep -Eq '^\$ANSIBLE_VAULT;1\.[12];AES256(;development)?$' || {
+  head -n 1 "$vault_file" | grep -Eq "^\\\$ANSIBLE_VAULT;1\\.[12];AES256(;development)?$" || {
     echo "$vault_file is not an encrypted Ansible Vault file." >&2
     exit 1
   }
