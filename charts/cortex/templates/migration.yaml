@@ -14,7 +14,6 @@ spec:
       labels:
         app.kubernetes.io/name: cortex-migrate
         app.kubernetes.io/part-of: cortex
-        cortex.dev/source-sha: {{ .Values.sourceSha | trunc 63 | quote }}
     spec:
       restartPolicy: Never
       automountServiceAccountToken: false
@@ -22,7 +21,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: migrate
-          image: "{{ .Values.authApi.image.repository }}@{{ .Values.authApi.image.digest }}"
+          image: {{ .Values.authApi.image | quote }}
           imagePullPolicy: IfNotPresent
           command:
             - /app/node_modules/.bin/prisma

@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-image-updater
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  project: platform
+  source:
+    repoURL: https://argoproj.github.io/argo-helm
+    chart: argocd-image-updater
+    targetRevision: 1.2.4
+    helm:
+      releaseName: argocd-image-updater
+      valuesObject:
+        replicaCount: 1
+        image:
+          repository: quay.io/argoprojlabs/argocd-image-updater
+          tag: v1.2.2@sha256:6a61e42794105cfd0ca029068f0cfc27bc29b9882d23df7bded7fcd1e14203da
+          pullPolicy: IfNotPresent
+        extraArgs:
+          - --interval
+          - 5m
+        extraEnv:
+          - name: GIT_COMMIT_METHOD
+            value: api
+        resources:
+          requests: {cpu: 100m, memory: 128Mi}
+          limits: {cpu: 500m, memory: 256Mi}
+        podSecurityContext:
+          runAsNonRoot: true
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          seccompProfile: {type: RuntimeDefault}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry:
+      limit: 20
+      backoff: {duration: 10s, factor: 2, maxDuration: 3m}
+    syncOptions: [CreateNamespace=true, ServerSideApply=true, PruneLast=true]

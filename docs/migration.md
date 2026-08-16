@@ -99,96 +99,64 @@ dig +short cortex-dev.podolog-warsaw.pl A
 All three commands must resolve to `167.233.59.107`. Remove the obsolete
 `argocd.podolog-warsaw.pl` record; Argo CD will not be public.
 
-## 5. Create the release-promotion GitHub App
+## 5. Configure the Image Updater GitHub App
 
-Skip this section only if Cortex and Podolog workflows already promote real
-image digests into this repository.
+Reuse the GitHub App created earlier for release promotion. Do not create a
+second App. In **Settings → Developer settings → GitHub Apps**, open it and set:
 
-In GitHub, open **Settings → Developer settings → GitHub Apps → New GitHub
-App** and create one App for release promotion:
+- **Repository permissions → Contents:** Read and write;
+- **Repository permissions → Pull requests:** Read and write;
+- every other permission: No access;
+- webhook: disabled.
 
-- give it any unique name, for example `cortex-infra-release-promoter`;
-- disable the webhook;
-- set **Repository permissions → Contents** to **Read and write**;
-- leave every other permission at **No access**.
+Under **Install App**, confirm that it is installed on the `gena-tokarev`
+account with **Only select repositories → infra**. Approve the updated
+permissions if GitHub requests it.
 
-Creating the App does not install it. On the App settings page, open **Install
-App** in the left sidebar, select the `gena-tokarev` account, choose **Only
-select repositories**, select `infra`, and complete the installation. If the App
-was installed previously, open **Configure** and verify that `infra` is included
-in its repository access.
-
-Return to the App's **General** page. Copy the **Client ID** shown near the top,
-then generate one private key under **Private keys**; GitHub downloads a `.pem`
-file. The Client ID normally begins with `Iv`. The private key is the complete
-multiline file, including its `BEGIN` and `END` lines.
-
-If the `infra` repository has a branch-protection rule or repository ruleset
-that blocks direct pushes to its `main` branch, add this GitHub App as a bypass
-actor. This refers to the existing `main` branch in the `infra` repository; you
-do not need a branch named `infra`. If you have not configured branch protection
-or a ruleset for `main`, there is nothing to change here.
-
-The two required values are:
+Record these three values in your password manager:
 
 ```text
-INFRA_APP_CLIENT_ID      = Client ID shown on the GitHub App General page
-INFRA_APP_PRIVATE_KEY    = complete contents of the downloaded .pem file
+GitHub App ID            numeric App ID on the App's General page
+Installation ID          number at the end of the installation Configure URL
+GitHub App private key   complete downloaded .pem contents
 ```
 
-Use **Client ID**, not the numeric App ID, installation ID, or client secret.
-Keep the `.pem` private. The Client ID and private key must come from the same
-GitHub App.
-
-Add the same values in these repository environments:
-
-1. `gena-tokarev/cortex` → **Settings → Environments → development**
-   - environment variable: `INFRA_APP_CLIENT_ID`
-   - environment secret: `INFRA_APP_PRIVATE_KEY`
-2. `gena-tokarev/podolog` → **Settings → Environments → production**
-   - environment variable: `INFRA_APP_CLIENT_ID`
-   - environment secret: `INFRA_APP_PRIVATE_KEY`
-
-If either environment still contains the obsolete `INFRA_APP_ID` variable,
-delete it after adding `INFRA_APP_CLIENT_ID`; the current workflows do not use
-it.
-
-The official token action uses these values to request a short-lived GitHub App
-installation token scoped to `gena-tokarev/infra`. It does not authenticate to
-GHCR or the VPS. If **Create infra repository token** fails with:
+The installation URL resembles:
 
 ```text
-GET /repos/gena-tokarev/infra/installation: 404 Not Found
+https://github.com/settings/installations/67890
 ```
 
-the App is not installed on `infra`, `infra` is missing from the installation's
-selected repositories, or the Client ID/private key belong to a different App.
-Return to **Developer settings → GitHub Apps → your App → Install App** and fix
-the repository selection before rerunning the workflow.
+In that example the installation ID is `67890`. Use the numeric **App ID**, not
+the Client ID beginning with `Iv`, for Image Updater. If the original `.pem` is
+no longer available locally, generate a new private key under the App's
+**Private keys** section. Do not copy it to the VPS.
 
-Do not put any VPS, SSH, Kubernetes, Argo CD, or Vault credentials in GitHub
-Actions.
+Keep the existing `INFRA_APP_CLIENT_ID` and `INFRA_APP_PRIVATE_KEY` values in
+the Cortex and Podolog GitHub environments temporarily. The new workflows do
+not use them, but remove them only after step 14 verifies Image Updater.
 
-## 6. Publish the infrastructure and application releases
+If an infra ruleset blocks direct writes to `main`, keep this App as a bypass
+actor so Cortex development updates can be committed. Podolog production still
+uses a pull request because its Image Updater policy explicitly requests one.
 
-First commit and push the current `infra` implementation so Argo CD will be able
-to read it:
+## 6. Publish the infrastructure and `main` image channels
+
+Commit and push this infra implementation first:
 
 ```bash
+cd /Users/genatokarev/Projects/infra
 git status
 git add -A
 git diff --cached
-git commit -m "feat: provision k3s with Argo CD and CloudNativePG"
+git commit -m "feat: add Argo CD Image Updater"
 git push origin main
 ```
 
-Push a commit to `main` in Cortex and Podolog, or rerun their latest `main`
-workflows. A successful run must:
-
-1. validate the application;
-2. publish its GHCR image or images;
-3. run the promotion job;
-4. commit immutable image digests to `gena-tokarev/infra`.
+Then commit and push the updated workflows in Cortex and Podolog. A successful
+`main` workflow now validates the application and publishes affected images
+with both an immutable `sha-<commit>` tag and a movable `main` tag. It never
+checks out or writes to `infra`.
 
 After the first publication, make these three GitHub packages public:
 
@@ -203,14 +171,7 @@ settings** → **Danger Zone → Change visibility → Public**. The source
 repositories may remain public or private independently; Kubernetes only needs
 anonymous read access to these packages.
 
-Pull the release commits made by the GitHub App:
-
-```bash
-cd /Users/genatokarev/Projects/infra
-git pull --rebase origin main
-```
-
-Confirm that all three placeholder digests are gone:
+Confirm that the existing bootstrap release files contain real digests:
 
 ```bash
 if grep -R -nE 'sha256:0{64}' environments/development; then
@@ -219,7 +180,15 @@ if grep -R -nE 'sha256:0{64}' environments/development; then
 fi
 ```
 
-Do not continue while either application workflow or its promotion job is
+Confirm all three `main` tags exist:
+
+```bash
+docker buildx imagetools inspect ghcr.io/gena-tokarev/cortex-auth-api:main
+docker buildx imagetools inspect ghcr.io/gena-tokarev/cortex-web:main
+docker buildx imagetools inspect ghcr.io/gena-tokarev/podolog-web:main
+```
+
+Do not continue while an application workflow or any of these inspections is
 failing.
 
 ## 7. Create the read-only Argo CD deploy key
@@ -244,7 +213,8 @@ the public-key line, name it `argocd-infra-readonly`, and leave **Allow write
 access** unchecked.
 
 The complete contents of `$HOME/.ssh/argocd_infra_readonly` will be stored as
-`vault_argocd_repository_private_key` in the next step. Never commit the raw key.
+`vault_argocd_repository_private_key` in the next step. This key remains
+read-only; Image Updater uses the separate GitHub App credential.
 
 ## 8. Create and fill the encrypted Ansible Vault
 
@@ -301,6 +271,12 @@ vault_argocd_repository_private_key: |
   -----BEGIN OPENSSH PRIVATE KEY-----
   COMPLETE_PRIVATE_KEY_CONTENT
   -----END OPENSSH PRIVATE KEY-----
+vault_image_updater_github_app_id: "YOUR_NUMERIC_APP_ID"
+vault_image_updater_github_app_installation_id: "YOUR_NUMERIC_INSTALLATION_ID"
+vault_image_updater_github_app_private_key: |
+  -----BEGIN RSA PRIVATE KEY-----
+  COMPLETE_GITHUB_APP_PRIVATE_KEY
+  -----END RSA PRIVATE KEY-----
 
 vault_cortex_postgres_password: YOUR_HEX_POSTGRES_PASSWORD
 vault_cortex_database_url: postgresql://cortex:YOUR_HEX_POSTGRES_PASSWORD@cortex-postgres-rw:5432/cortex_auth?schema=public
@@ -335,8 +311,9 @@ git push origin main
 ```
 
 Back up the Vault password in your password manager. After confirming that the
-encrypted Vault is committed and recoverable, you may remove the temporary local
-Argo private-key files:
+encrypted Vault is committed and recoverable, remove the temporary read-only
+Argo key files. Keep the GitHub App `.pem` in your password manager until Image
+Updater is verified:
 
 ```bash
 rm "$HOME/.ssh/argocd_infra_readonly" "$HOME/.ssh/argocd_infra_readonly.pub"
@@ -447,6 +424,10 @@ problem, run `make bootstrap` again.
 ssh deploy@167.233.59.107 'kubectl get nodes -o wide'
 ssh deploy@167.233.59.107 'kubectl get pods -A'
 ssh deploy@167.233.59.107 \
+  'kubectl -n argocd get imageupdater application-images'
+ssh deploy@167.233.59.107 \
+  'kubectl -n argocd rollout status deployment/argocd-image-updater'
+ssh deploy@167.233.59.107 \
   'kubectl -n cortex get clusters.postgresql.cnpg.io,pods,services,pvc'
 ssh deploy@167.233.59.107 \
   'kubectl -n gateway-system get gateway,certificate'
@@ -460,6 +441,7 @@ Expected results:
 
 - the k3s node is `Ready`;
 - all application/controller pods are running or completed successfully;
+- `application-images` reports `Ready=True`;
 - `cortex-postgres` reports ready and its PVC is `Bound`;
 - the Podolog and Cortex certificates report ready;
 - Podolog responds over HTTPS;
@@ -492,11 +474,61 @@ Argo CD is intentionally unreachable from the public internet. Closing the SSH
 tunnel removes local browser access but does not affect deployments.
 
 Verify in Argo that the platform and workload Applications are `Synced` and
-`Healthy`. A future Cortex or Podolog `main` build will publish new images,
-commit their immutable digests to `infra`, and Argo will reconcile them without
-GitHub Actions knowing anything about the VPS.
+`Healthy`, including `argocd-image-updater` and `image-updater-config`.
 
-## 15. Manual fallback to the old Docker deployment
+Image Updater checks every five minutes. After the application workflows have
+published their `main` tags, verify its behavior:
+
+```bash
+ssh deploy@167.233.59.107 \
+  'kubectl -n argocd logs deployment/argocd-image-updater --tail=200'
+
+cd /Users/genatokarev/Projects/infra
+git pull --rebase origin main
+git log --oneline -10
+```
+
+Expected behavior:
+
+- Cortex gets a verified GitHub App commit updating only changed digests in
+  `environments/development/cortex/release.yaml`;
+- Podolog gets an Image Updater pull request changing
+  `environments/development/podolog/release.yaml`;
+- Podolog does not deploy until you review and merge that PR.
+
+After both behaviors are confirmed, remove `INFRA_APP_CLIENT_ID` and
+`INFRA_APP_PRIVATE_KEY` from the Cortex `development` and Podolog `production`
+GitHub environments. Delete either environment only if it is otherwise empty.
+Keep the GitHub App installed on `infra`; Image Updater now uses it.
+
+For a future Cortex production environment:
+
+1. seed `environments/production/cortex/release.yaml` with the exact digests
+   currently deployed in development;
+2. create a distinct `cortex-production` Argo Application using the production
+   values and release files;
+3. add an Image Updater `applicationRef` matching `cortex-production` that
+   tracks the same `cortex-auth-api:main` and `cortex-web:main` images;
+4. set its write-back target to the production release file and configure
+   `pullRequest.github: {}`;
+5. require infra validation and a human merge before Argo can see the change.
+
+Production therefore receives the exact GHCR artifacts already exercised in
+development; only the write-back approval policy differs.
+
+## 15. Roll back an Image Updater release
+
+For a bad Cortex development image, first commit `ignoreTags: ["*"]` for the
+affected image in `platform/image-updater/image-updater.yaml`. Wait until the
+configuration is Synced, then revert the relevant release commit. Without this
+pause, Image Updater will immediately select the bad `main` digest again.
+
+For Podolog production, close an unmerged Image Updater PR. If it was already
+merged, disable that image rule, revert the release commit, and wait for Argo to
+reconcile. Re-enable the rule only after `main` points at an acceptable image.
+Database migrations are not reversed and must remain backward-compatible.
+
+## 16. Manual fallback to the old Docker deployment
 
 If bootstrap fails and you want the old deployment back, run on the VPS:
 

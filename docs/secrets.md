@@ -18,6 +18,13 @@ shell history by running `make argocd-password-hash`. Generate a
 dedicated SSH deploy key for Argo; put its private half in the Vault and add only
 the public half to the private infra repository with read-only access.
 
+Store the separate Image Updater writer as
+`vault_image_updater_github_app_id`,
+`vault_image_updater_github_app_installation_id`, and
+`vault_image_updater_github_app_private_key`. This GitHub App is installed only
+on `infra` with Contents and Pull requests read/write. Do not reuse its key for
+Argo CD repository reads or application CI.
+
 Generate that dedicated key locally (it is separate from your VPS login key):
 
 ```bash
@@ -34,7 +41,8 @@ delete that temporary directory after confirming the encrypted Vault is backed
 up. Do not reuse the GitHub App key or the VPS login key.
 
 Ansible streams Kubernetes Secret manifests to `kubectl apply -f -`; it does not
-write plaintext manifests locally or remotely. Secret-bearing tasks use
+write plaintext manifests locally or remotely. This includes the Image Updater
+GitHub App Secret. Secret-bearing tasks use
 `no_log: true`, and k3s encrypts Kubernetes Secrets at rest with `secretbox`.
 
 Rotate values with `make vault-edit`, commit the new ciphertext, then run

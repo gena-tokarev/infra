@@ -59,7 +59,7 @@
     that:
       - "'sha256:' + ('0' * 64) not in preflight_release_files_text"
       - preflight_release_files_text | regex_findall('sha256:[0-9a-f]{64}') | length == 3
-    fail_msg: Application CI must publish and promote all three non-placeholder image digests first.
+    fail_msg: All three release files must contain non-placeholder bootstrap image digests.
 
 - name: Validate required public configuration
   ansible.builtin.assert:
@@ -87,6 +87,9 @@
     - "{{ vault_argocd_admin_password_hash }}"
     - "{{ vault_argocd_admin_password }}"
     - "{{ vault_argocd_repository_private_key }}"
+    - "{{ vault_image_updater_github_app_id }}"
+    - "{{ vault_image_updater_github_app_installation_id }}"
+    - "{{ vault_image_updater_github_app_private_key }}"
     - "{{ vault_cortex_postgres_password }}"
     - "{{ vault_cortex_database_url }}"
     - "{{ vault_auth_access_token_secret }}"
@@ -106,7 +109,10 @@
       - vault_auth_refresh_token_secret | length >= 32
       - vault_auth_external_state_secret | length >= 32
       - "'BEGIN OPENSSH PRIVATE KEY' in vault_argocd_repository_private_key"
-    fail_msg: Vault values are invalid, the database URL targets the wrong service, or the Argo repository key is not an OpenSSH private key.
+      - vault_image_updater_github_app_id is match('^[0-9]+$')
+      - vault_image_updater_github_app_installation_id is match('^[0-9]+$')
+      - vault_image_updater_github_app_private_key is regex('BEGIN (RSA )?PRIVATE KEY')
+    fail_msg: Vault values, repository credentials, or the Cortex database configuration are invalid.
   no_log: true
 
 - name: Validate the Argo CD bcrypt hash

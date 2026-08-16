@@ -32,14 +32,13 @@ spec:
       labels:
         app.kubernetes.io/name: cortex-auth-api
         app.kubernetes.io/part-of: cortex
-        cortex.dev/source-sha: {{ .Values.sourceSha | trunc 63 | quote }}
     spec:
       automountServiceAccountToken: false
       securityContext:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: auth-api
-          image: "{{ .Values.authApi.image.repository }}@{{ .Values.authApi.image.digest }}"
+          image: {{ .Values.authApi.image | quote }}
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: cortex-config}

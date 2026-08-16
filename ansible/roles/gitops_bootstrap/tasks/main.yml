@@ -24,6 +24,23 @@
   ansible.builtin.command: kubectl -n cnpg-system rollout status deployment/cnpg-cloudnative-pg --timeout=10m
   changed_when: false
 
+- name: Wait for Image Updater Application to synchronize
+  ansible.builtin.command: >-
+    kubectl -n argocd wait --for=jsonpath='{.status.sync.status}'=Synced
+    application/argocd-image-updater --timeout=10m
+  changed_when: false
+
+- name: Wait for Image Updater controller
+  ansible.builtin.command: >-
+    kubectl -n argocd rollout status deployment/argocd-image-updater --timeout=10m
+  changed_when: false
+
+- name: Wait for Image Updater configuration to synchronize
+  ansible.builtin.command: >-
+    kubectl -n argocd wait --for=jsonpath='{.status.sync.status}'=Synced
+    application/image-updater-config --timeout=10m
+  changed_when: false
+
 - name: Wait for remaining platform Applications to synchronize
   ansible.builtin.command: >-
     kubectl -n argocd wait --for=jsonpath='{.status.sync.status}'=Synced
@@ -61,4 +78,10 @@
   loop:
     - cortex
     - podolog
+  changed_when: false
+
+- name: Wait for application image policy readiness
+  ansible.builtin.command: >-
+    kubectl -n argocd wait --for=condition=Ready
+    imageupdater/application-images --timeout=10m
   changed_when: false

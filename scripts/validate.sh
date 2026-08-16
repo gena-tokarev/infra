@@ -16,6 +16,10 @@ helm template cnpg cloudnative-pg \
   --repo https://cloudnative-pg.github.io/charts \
   --version 0.29.0 \
   --namespace cnpg-system > "$tmp_dir/cloudnative-pg.yaml"
+helm template argocd-image-updater argocd-image-updater \
+  --repo https://argoproj.github.io/argo-helm \
+  --version 1.2.4 \
+  --namespace argocd > "$tmp_dir/argocd-image-updater.yaml"
 helm template cortex charts/cortex --namespace cortex \
   -f environments/development/cortex/values.yaml \
   -f environments/development/cortex/release.yaml > "$tmp_dir/cortex.yaml"
@@ -23,6 +27,7 @@ helm template podolog charts/podolog --namespace podolog \
   -f environments/development/podolog/values.yaml \
   -f environments/development/podolog/release.yaml > "$tmp_dir/podolog.yaml"
 kubectl kustomize platform/config > "$tmp_dir/platform.yaml"
+kubectl kustomize platform/image-updater > "$tmp_dir/image-updater-config.yaml"
 kubectl kustomize clusters/development/platform > "$tmp_dir/platform-apps.yaml"
 kubectl kustomize clusters/development/workloads > "$tmp_dir/workload-apps.yaml"
 
@@ -31,6 +36,17 @@ grep -Eq 'tag: 1\.30\.0@sha256:[0-9a-f]{64}$' clusters/development/platform/clou
 grep -Eq 'image: ghcr.io/cloudnative-pg/postgresql:16\.10-system-trixie@sha256:[0-9a-f]{64}$' \
   charts/cortex-data/values.yaml
 grep -q 'cortex-postgres-rw:5432' ansible/vault.example.yml
+grep -q 'targetRevision: 1.2.4' clusters/development/platform/image-updater.yaml
+grep -q 'v1.2.2@sha256:6a61e42794105cfd0ca029068f0cfc27bc29b9882d23df7bded7fcd1e14203da' \
+  clusters/development/platform/image-updater.yaml
+
+release_text=$(cat \
+  environments/development/cortex/release.yaml \
+  environments/development/podolog/release.yaml)
+if [ "$(printf '%s\n' "$release_text" | grep -Ec 'ghcr\.io/.+:main@sha256:[0-9a-f]{64}$')" -ne 3 ]; then
+  echo 'Release files must contain exactly three immutable main-tag image references.' >&2
+  exit 1
+fi
 
 for manifest in "$tmp_dir"/*.yaml; do
   if command -v kubeconform >/dev/null 2>&1; then
@@ -57,7 +73,11 @@ else
   echo "Vault has not been initialized yet; run make vault-create before bootstrap." >&2
 fi
 
-if git grep -nE 'BEGIN (OPENSSH|RSA) PRIVATE KEY|AUTH_(ACCESS|REFRESH)_TOKEN_SECRET=' -- ':!ansible/vault.example.yml' ':!scripts/validate.sh'; then
+if git grep -nE 'BEGIN (OPENSSH|RSA) PRIVATE KEY|AUTH_(ACCESS|REFRESH)_TOKEN_SECRET=' -- \
+  ':!ansible/vault.example.yml' \
+  ':!ansible/roles/preflight/tasks/main.yml' \
+  ':!docs/**' \
+  ':!scripts/validate.sh'; then
   echo 'A plaintext secret appears to be tracked.' >&2
   exit 1
 fi

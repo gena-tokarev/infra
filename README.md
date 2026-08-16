@@ -5,9 +5,10 @@ at `167.233.59.107`. It treats the host as a generic server: Ansible has no
 knowledge of existing Docker projects, directories, volumes, databases, proxy
 configuration, certificates, or rollback procedures.
 
-Application CI publishes immutable public GHCR images and updates their digests
-in this repository. Argo CD reconciles those releases but is not public; access
-it through an SSH tunnel at `http://localhost:8080`.
+Application CI publishes public GHCR images without repository credentials.
+Argo CD Image Updater resolves each `main` tag to an immutable digest and writes
+the release files in this repository. Argo CD reconciles those releases but is
+not public; access it through an SSH tunnel at `http://localhost:8080`.
 
 ## Setup
 
@@ -32,8 +33,8 @@ it through an SSH tunnel at `http://localhost:8080`.
    Commit only the encrypted `vault.yml`; keep its password in a password
    manager. Follow [Secrets](docs/secrets.md) for the Argo repository key.
 
-4. Ensure Cortex and Podolog CI have promoted real, non-placeholder image
-   digests.
+4. Ensure the bootstrap release files contain real digests and Cortex and
+   Podolog have published their `main` image tags.
 
 5. Follow the manual host preparation in [Migration](docs/migration.md). Existing
    services must release ports 80 and 443 before provisioning.
@@ -48,7 +49,7 @@ it through an SSH tunnel at `http://localhost:8080`.
 
 `make bootstrap` installs pinned k3s with packaged Traefik enabled immediately,
 installs CloudNativePG with a single PostgreSQL instance and an ephemeral Redis,
-installs private Argo CD, applies
+installs private Argo CD and Image Updater, applies
 Vault-backed Kubernetes Secrets, synchronizes Cortex and Podolog, waits for
 certificates, and checks the public HTTPS endpoints. It is idempotent and does
 not call Docker.

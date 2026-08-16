@@ -1,0 +1,49 @@
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: application-images
+  namespace: argocd
+spec:
+  applicationRefs:
+    - namePattern: cortex
+      writeBackConfig:
+        method: git:secret:argocd-image-updater-git
+        gitConfig:
+          repository: https://github.com/gena-tokarev/infra.git
+          branch: main
+          writeBackTarget: helmvalues:/environments/development/cortex/release.yaml
+      images:
+        - alias: auth-api
+          imageName: ghcr.io/gena-tokarev/cortex-auth-api:main
+          commonUpdateSettings:
+            updateStrategy: digest
+            platforms: [linux/amd64]
+          manifestTargets:
+            helm:
+              spec: authApi.image
+        - alias: web
+          imageName: ghcr.io/gena-tokarev/cortex-web:main
+          commonUpdateSettings:
+            updateStrategy: digest
+            platforms: [linux/amd64]
+          manifestTargets:
+            helm:
+              spec: web.image
+    - namePattern: podolog
+      writeBackConfig:
+        method: git:secret:argocd-image-updater-git
+        gitConfig:
+          repository: https://github.com/gena-tokarev/infra.git
+          branch: main
+          writeBackTarget: helmvalues:/environments/development/podolog/release.yaml
+          pullRequest:
+            github: {}
+      images:
+        - alias: web
+          imageName: ghcr.io/gena-tokarev/podolog-web:main
+          commonUpdateSettings:
+            updateStrategy: digest
+            platforms: [linux/amd64]
+          manifestTargets:
+            helm:
+              spec: web.image

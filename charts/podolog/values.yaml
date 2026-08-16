@@ -1,8 +1,5 @@
-sourceSha: bootstrap
 web:
-  image:
-    repository: ghcr.io/gena-tokarev/podolog-web
-    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  image: ghcr.io/gena-tokarev/podolog-web:main@sha256:0000000000000000000000000000000000000000000000000000000000000000
   replicas: 1
   resources:
     requests: {cpu: 100m, memory: 128Mi}

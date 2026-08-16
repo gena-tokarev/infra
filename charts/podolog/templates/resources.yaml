@@ -29,14 +29,13 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: podolog-web
-        podolog.dev/source-sha: {{ .Values.sourceSha | trunc 63 | quote }}
     spec:
       automountServiceAccountToken: false
       securityContext:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: web
-          image: "{{ .Values.web.image.repository }}@{{ .Values.web.image.digest }}"
+          image: {{ .Values.web.image | quote }}
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

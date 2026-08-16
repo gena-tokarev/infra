@@ -4,6 +4,9 @@ infra_repository_revision: main
 vault_argocd_admin_password: CI_ONLY_PASSWORD
 vault_argocd_admin_password_hash: "$2b$12$CI_ONLY_NOT_A_REAL_PASSWORD_HASH0000000000000000000000000"
 vault_argocd_repository_private_key: CI_ONLY
+vault_image_updater_github_app_id: "12345"
+vault_image_updater_github_app_installation_id: "67890"
+vault_image_updater_github_app_private_key: CI_ONLY_PRIVATE_KEY
 cortex_postgres_user: cortex
 cortex_postgres_database: cortex_auth
 vault_cortex_postgres_password: ci

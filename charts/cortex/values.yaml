@@ -1,16 +1,11 @@
-sourceSha: bootstrap
 authApi:
-  image:
-    repository: ghcr.io/gena-tokarev/cortex-auth-api
-    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  image: ghcr.io/gena-tokarev/cortex-auth-api:main@sha256:0000000000000000000000000000000000000000000000000000000000000000
   replicas: 1
   resources:
     requests: {cpu: 100m, memory: 128Mi}
     limits: {cpu: 500m, memory: 512Mi}
 web:
-  image:
-    repository: ghcr.io/gena-tokarev/cortex-web
-    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  image: ghcr.io/gena-tokarev/cortex-web:main@sha256:0000000000000000000000000000000000000000000000000000000000000000
   replicas: 1
   resources:
     requests: {cpu: 100m, memory: 128Mi}

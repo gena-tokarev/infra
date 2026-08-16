@@ -32,14 +32,13 @@ spec:
       labels:
         app.kubernetes.io/name: cortex-web
         app.kubernetes.io/part-of: cortex
-        cortex.dev/source-sha: {{ .Values.sourceSha | trunc 63 | quote }}
     spec:
       automountServiceAccountToken: false
       securityContext:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: web
-          image: "{{ .Values.web.image.repository }}@{{ .Values.web.image.digest }}"
+          image: {{ .Values.web.image | quote }}
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: cortex-config}

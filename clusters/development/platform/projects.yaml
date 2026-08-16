@@ -9,6 +9,7 @@ spec:
     - git@github.com:gena-tokarev/infra.git
     - https://charts.jetstack.io
     - https://cloudnative-pg.github.io/charts
+    - https://argoproj.github.io/argo-helm
     - https://github.com/kubernetes-sigs/gateway-api.git
   destinations:
     - namespace: '*'
