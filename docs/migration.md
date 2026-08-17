@@ -481,6 +481,25 @@ tunnel removes local browser access but does not affect deployments.
 Verify in Argo that the platform and workload Applications are `Synced` and
 `Healthy`, including `argocd-image-updater` and `image-updater-config`.
 
+To inspect the complete live cluster with Lens, first copy the protected
+kubeconfig once:
+
+```bash
+mkdir -p ~/.kube
+scp deploy@167.233.59.107:/home/deploy/.kube/config ~/.kube/cortex-development.yaml
+chmod 600 ~/.kube/cortex-development.yaml
+```
+
+Then start the private Kubernetes API tunnel and keep it running:
+
+```bash
+make lens-tunnel
+```
+
+Import `~/.kube/cortex-development.yaml` in Lens. The kubeconfig points to
+`https://127.0.0.1:6443`, which is reachable only while the tunnel is active.
+Stop it with `Ctrl+C`; never expose the VPS Kubernetes API port publicly.
+
 Image Updater checks every five minutes. After the application workflows have
 published their `main` tags, verify its behavior:
 

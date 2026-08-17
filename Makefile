@@ -7,7 +7,7 @@ ANSIBLE_PLAYBOOK := $(ANSIBLE_ENV) $(VENV)/bin/ansible-playbook
 INVENTORY := $(ANSIBLE_DIR)/inventories/development/hosts.yml
 VAULT_FILE := $(ANSIBLE_DIR)/inventories/development/group_vars/all/vault.yml
 
-.PHONY: ansible-setup argocd-password-hash vault-create vault-edit ansible-check bootstrap argocd-tunnel
+.PHONY: ansible-setup argocd-password-hash vault-create vault-edit ansible-check bootstrap argocd-tunnel lens-tunnel
 
 ansible-setup:
 	python3 -m venv $(VENV)
@@ -38,3 +38,6 @@ bootstrap:
 
 argocd-tunnel:
 	./scripts/argocd-tunnel.sh
+
+lens-tunnel:
+	./scripts/lens-tunnel.sh

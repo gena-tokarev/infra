@@ -45,6 +45,7 @@ not public; access it through an SSH tunnel at `http://localhost:8080`.
    make ansible-check
    make bootstrap
    make argocd-tunnel
+   make lens-tunnel
    ```
 
 `make bootstrap` installs pinned k3s with packaged Traefik enabled immediately,
@@ -65,3 +66,10 @@ not call Docker.
 
 Additional guides: [database operations](docs/database.md),
 [GitHub setup](docs/github-setup.md), and [rollback](docs/rollback.md).
+
+## Private cluster access
+
+`make argocd-tunnel` exposes only the private Argo CD UI on local port `8080`.
+`make lens-tunnel` exposes the private k3s API on local port `6443` for Lens or
+local `kubectl`. Both commands stay in the foreground and close their tunnel
+when stopped with `Ctrl+C`; neither exposes a public VPS port.

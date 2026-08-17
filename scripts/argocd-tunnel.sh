@@ -11,5 +11,6 @@ exec ssh \
   -L 8080:127.0.0.1:8080 \
   -p "$port" \
   "$user@$host" \
+  env K3S_CONFIG_FILE=/dev/null \
   kubectl --kubeconfig /home/deploy/.kube/config -n argocd port-forward \
     --address 127.0.0.1 service/argocd-server 8080:80
