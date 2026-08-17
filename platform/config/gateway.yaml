@@ -22,7 +22,7 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - {kind: Secret, name: podolog-tls}
+          - {group: "", kind: Secret, name: podolog-tls}
       allowedRoutes: *allowedRoutes
     - name: podolog-www-https
       protocol: HTTPS
@@ -31,7 +31,7 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - {kind: Secret, name: podolog-tls}
+          - {group: "", kind: Secret, name: podolog-tls}
       allowedRoutes: *allowedRoutes
     - name: cortex-https
       protocol: HTTPS
@@ -40,5 +40,5 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - {kind: Secret, name: cortex-tls}
+          - {group: "", kind: Secret, name: cortex-tls}
       allowedRoutes: *allowedRoutes
