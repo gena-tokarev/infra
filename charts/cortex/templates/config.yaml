@@ -6,7 +6,6 @@ metadata:
     argocd.argoproj.io/sync-wave: "-2"
 data:
   NODE_ENV: production
-  PORT: "3001"
   {{- range $key, $value := .Values.config }}
   {{ $key }}: {{ $value | quote }}
   {{- end }}

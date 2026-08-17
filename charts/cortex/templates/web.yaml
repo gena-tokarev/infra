@@ -42,6 +42,8 @@ spec:
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: cortex-config}
+          env:
+            - {name: PORT, value: "3000"}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
