@@ -50,11 +50,16 @@ Verify the existing VPS login and sudo access:
 ```bash
 ssh -o IdentitiesOnly=yes deploy@167.233.59.107
 sudo -v
+command -v sudo.ws
 exit
 ```
 
 The SSH command must use the key already authorized for `deploy`. `sudo -v`
-must accept `deploy`'s sudo password.
+must accept `deploy`'s sudo password. `command -v sudo.ws` must print
+`/usr/bin/sudo.ws`. Ubuntu 25.10 and newer use `sudo-rs` by default, whose
+password prompt is not currently compatible with Ansible's sudo become plugin;
+the development inventory therefore directs Ansible to the supported classic
+`sudo.ws` executable without changing the VPS-wide default.
 
 ## 3. Install the pinned local automation tools
 

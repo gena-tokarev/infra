@@ -12,6 +12,8 @@ spec:
         enabled: true
     gateway:
       enabled: false
+    gatewayClass:
+      enabled: true
     service:
       type: LoadBalancer
     logs:

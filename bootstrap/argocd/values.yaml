@@ -25,6 +25,12 @@ controller:
 dex:
   enabled: false
 
+applicationSet:
+  replicas: 0
+
+notifications:
+  enabled: false
+
 repoServer:
   resources:
     requests: {cpu: 50m, memory: 128Mi}
