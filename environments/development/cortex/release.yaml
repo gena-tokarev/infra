@@ -1,4 +1,4 @@
 authApi:
-  image: ghcr.io/gena-tokarev/cortex-auth-api:main@sha256:cc54468ea52a8ca0072aa90290050e94dc5d1705ec971169a6dbef6efad6438a
+  image: ghcr.io/gena-tokarev/cortex-auth-api:main@sha256:545de9d73b0c43c3b0fed99510152a5ea2206d4a4f25e50886edbc649880b36c
 web:
-  image: ghcr.io/gena-tokarev/cortex-web:main@sha256:e52b74fab23747c9a5d7d39ef700c925f9640c7982fb2de869f657d22791c2a6
+  image: ghcr.io/gena-tokarev/cortex-web:main@sha256:4577905bf92d62cc665cbf4a9baaa6940266643183d16969fc678af307ad35ed
