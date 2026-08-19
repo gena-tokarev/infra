@@ -1,0 +1,71 @@
+---
+- name: Wait for Argo CD Applications to exist
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - -n
+      - argocd
+      - get
+      - application/{{ item }}
+  loop: "{{ gitops_bootstrap_applications }}"
+  loop_control:
+    label: "{{ item }}"
+  register: gitops_bootstrap_application_exists
+  retries: 60
+  delay: 5
+  until: gitops_bootstrap_application_exists.rc == 0
+  changed_when: false
+
+- name: Read Argo CD Application statuses
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - -n
+      - argocd
+      - get
+      - application/{{ item }}
+      - -o
+      - json
+  loop: "{{ gitops_bootstrap_applications }}"
+  loop_control:
+    label: "{{ item }}"
+  register: gitops_bootstrap_application_statuses
+  changed_when: false
+
+- name: Restart failed Argo CD sync operations during bootstrap recovery
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - -n
+      - argocd
+      - patch
+      - application/{{ item.item }}
+      - --type=merge
+      - --patch
+      - >-
+        {{
+          {
+            'operation': {
+              'initiatedBy': {'username': 'ansible-bootstrap'},
+              'sync': {
+                'prune': (
+                  (item.stdout | from_json).spec.syncPolicy.automated.prune
+                  | default(false)
+                ),
+                'syncOptions': (
+                  (item.stdout | from_json).spec.syncPolicy.syncOptions
+                  | default([])
+                )
+              }
+            }
+          } | to_json
+        }}
+  loop: "{{ gitops_bootstrap_application_statuses.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when:
+    - (item.stdout | from_json).status.sync.status != 'Synced'
+    - >-
+      (item.stdout | from_json).status.operationState.phase
+      | default('') in ['Error', 'Failed']
+  changed_when: true

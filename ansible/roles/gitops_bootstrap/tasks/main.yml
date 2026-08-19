@@ -6,45 +6,17 @@
   register: gitops_bootstrap_platform_root
   changed_when: "'created' in gitops_bootstrap_platform_root.stdout or 'configured' in gitops_bootstrap_platform_root.stdout"
 
-- name: Wait for the platform root to create the CloudNativePG Application
-  ansible.builtin.command: kubectl -n argocd get application/cloudnative-pg
-  register: gitops_bootstrap_cnpg_application
-  retries: 60
-  delay: 5
-  until: gitops_bootstrap_cnpg_application.rc == 0
-  changed_when: false
-
-- name: Read the CloudNativePG Application status
-  ansible.builtin.command:
-    argv:
-      - kubectl
-      - -n
-      - argocd
-      - get
-      - application/cloudnative-pg
-      - -o
-      - json
-  register: gitops_bootstrap_cnpg_status
-  changed_when: false
-
-- name: Retry a previously failed CloudNativePG synchronization
-  ansible.builtin.command:
-    argv:
-      - kubectl
-      - -n
-      - argocd
-      - patch
-      - application/cloudnative-pg
-      - --type=merge
-      - --patch
-      - >-
-        {"operation":{"initiatedBy":{"username":"ansible-bootstrap"},"sync":{"prune":true,"syncOptions":["CreateNamespace=true","ServerSideApply=true","PruneLast=true"]}}}
-  when:
-    - (gitops_bootstrap_cnpg_status.stdout | from_json).status.sync.status != 'Synced'
-    - >-
-      (gitops_bootstrap_cnpg_status.stdout | from_json).status.operationState.phase
-      | default('') in ['Error', 'Failed']
-  changed_when: true
+- name: Recover failed platform Applications on a resumed bootstrap
+  ansible.builtin.include_tasks: recover_applications.yml
+  vars:
+    gitops_bootstrap_applications:
+      - cloudnative-pg
+      - argocd-image-updater
+      - image-updater-config
+      - gateway-api
+      - cert-manager
+      - platform-config
+      - cortex-data
 
 - name: Wait for CloudNativePG Application to synchronize
   ansible.builtin.command: >-
@@ -72,59 +44,6 @@
     kubectl -n argocd wait --for=jsonpath='{.status.sync.status}'=Synced
     application/image-updater-config --timeout=10m
   changed_when: false
-
-- name: Read remaining platform Application statuses
-  ansible.builtin.command:
-    argv:
-      - kubectl
-      - -n
-      - argocd
-      - get
-      - application/{{ item }}
-      - -o
-      - json
-  loop:
-    - gateway-api
-    - cert-manager
-    - platform-config
-    - cortex-data
-  register: gitops_bootstrap_platform_statuses
-  changed_when: false
-
-- name: Retry previously failed platform synchronizations
-  ansible.builtin.command:
-    argv:
-      - kubectl
-      - -n
-      - argocd
-      - patch
-      - application/{{ item.item }}
-      - --type=merge
-      - --patch
-      - >-
-        {{
-          {
-            'operation': {
-              'initiatedBy': {'username': 'ansible-bootstrap'},
-              'sync': {
-                'prune': true,
-                'syncOptions': (
-                  (item.stdout | from_json).spec.syncPolicy.syncOptions
-                  | default([])
-                )
-              }
-            }
-          } | to_json
-        }}
-  loop: "{{ gitops_bootstrap_platform_statuses.results }}"
-  loop_control:
-    label: "{{ item.item }}"
-  when:
-    - (item.stdout | from_json).status.sync.status != 'Synced'
-    - >-
-      (item.stdout | from_json).status.operationState.phase
-      | default('') in ['Error', 'Failed']
-  changed_when: true
 
 - name: Wait for remaining platform Applications to synchronize
   ansible.builtin.command: >-
@@ -155,6 +74,13 @@
   changed_when: >-
     'created' in gitops_bootstrap_workloads_root.stdout or
     'configured' in gitops_bootstrap_workloads_root.stdout
+
+- name: Recover failed workload Applications on a resumed bootstrap
+  ansible.builtin.include_tasks: recover_applications.yml
+  vars:
+    gitops_bootstrap_applications:
+      - cortex
+      - podolog
 
 - name: Wait for workload Applications to synchronize
   ansible.builtin.command: >-

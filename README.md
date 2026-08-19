@@ -36,8 +36,8 @@ not public; access it through an SSH tunnel at `http://localhost:8080`.
 4. Ensure the bootstrap release files contain real digests and Cortex and
    Podolog have published their `main` image tags.
 
-5. Follow the manual host preparation in [Migration](docs/migration.md). Existing
-   services must release ports 80 and 443 before provisioning.
+5. Follow [Bootstrap](docs/bootstrap.md) to prepare the clean target. Ports 80
+   and 443 must be free before the first provisioning run.
 
 6. Validate and provision everything:
 
@@ -65,7 +65,8 @@ not call Docker.
 | `cortex-dev.podolog-warsaw.pl/*` | Cortex web |
 
 Additional guides: [database operations](docs/database.md),
-[GitHub setup](docs/github-setup.md), and [rollback](docs/rollback.md).
+[GitHub setup](docs/github.md), [rollback](docs/rollback.md), and the
+[infrastructure learning path](docs/learning/README.md).
 
 ## Private cluster access
 

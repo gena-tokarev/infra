@@ -52,3 +52,6 @@ Cortex workloads in a controlled rollout. CloudNativePG watches the labelled
 The role (`cortex`) and database name (`cortex_auth`) are non-secret Git-managed
 configuration. Changing either is a data migration and is intentionally not
 automated.
+
+See [GitHub and registry configuration](github.md) for the complete credential
+boundaries and release flow.
