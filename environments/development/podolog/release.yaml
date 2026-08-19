@@ -1,2 +1,2 @@
 web:
-  image: ghcr.io/gena-tokarev/podolog-web:main@sha256:901b06aae600ae47369a29477e5f8a4251810a71cf3486358d51066e0049ec61
+  image: ghcr.io/gena-tokarev/podolog-web:main@sha256:0ad76ea4e11632c406b6ac21a1c0bdbfe2ce6fad2601feba7837e230e50175c0
