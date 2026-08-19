@@ -7,7 +7,7 @@ spec:
   applicationRefs:
     - namePattern: cortex
       writeBackConfig:
-        method: git:secret:argocd-image-updater-git
+        method: git:secret:argocd/argocd-image-updater-git
         gitConfig:
           repository: https://github.com/gena-tokarev/infra.git
           branch: main
@@ -31,7 +31,7 @@ spec:
               spec: web.image
     - namePattern: podolog
       writeBackConfig:
-        method: git:secret:argocd-image-updater-git
+        method: git:secret:argocd/argocd-image-updater-git
         gitConfig:
           repository: https://github.com/gena-tokarev/infra.git
           branch: main
