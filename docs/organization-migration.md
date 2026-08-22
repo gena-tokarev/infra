@@ -17,10 +17,11 @@ time; the committed configuration uses the new canonical URLs.
 - Image Updater tracks those two organization-owned packages.
 - Podolog continues to use the personal repository and GHCR namespace.
 
-The development Cortex release file intentionally continues referencing the
-last known-good personal images until the new organization packages exist.
-Image Updater replaces each reference independently after it sees a public
-`main` tag in the new package namespace.
+The development Cortex release file is switched explicitly after both new
+organization packages are publicly pullable. This one-time change is necessary
+because Image Updater uses `forceUpdate: false`: it updates the digest of an
+image already used by an Application, but does not replace an unrelated image
+repository automatically. Subsequent digest updates remain automatic.
 
 ## 0. Verify the local repository remotes
 
@@ -176,6 +177,12 @@ docker buildx imagetools inspect ghcr.io/gt-engineering/cortex-web:main
 
 Both commands must show a `linux/amd64` manifest.
 
+Record the top-level OCI index digest printed by each command in
+`environments/development/cortex/release.yaml`. Do not use the nested
+`linux/amd64` manifest digest; Image Updater's digest strategy tracks the index
+referenced by the `main` tag. The prepared migration commit already contains
+the verified index digests.
+
 ## 4. Apply the Infra changes
 
 Only continue after both organization images are publicly inspectable. Commit
@@ -193,6 +200,7 @@ git add -- \
   charts \
   clusters \
   docs \
+  environments/development/cortex/release.yaml \
   platform \
   scripts/argocd-tunnel.sh
 git commit -m "chore: migrate infrastructure to gt-engineering"
@@ -244,6 +252,9 @@ Finally, confirm the Cortex release file was updated to organization images:
 grep 'image:' environments/development/cortex/release.yaml
 ```
 
-Do not manually replace the old image references before the new public packages
-exist. The running deployment can safely keep using the old immutable digests
-during this migration.
+The live Deployments should use the same references after Argo CD reconciles:
+
+```bash
+kubectl -n cortex get deployments \
+  -o jsonpath='{range .items[*]}{.metadata.name}{" -> "}{range .spec.template.spec.containers[*]}{.image}{" "}{end}{"\n"}{end}'
+```
