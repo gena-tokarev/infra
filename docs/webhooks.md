@@ -93,7 +93,7 @@ Image Updater Service must be `ClusterIP`. The final request should return
 
 ## 4. Add the infra Git webhook
 
-Open **gena-tokarev/infra → Settings → Webhooks → Add webhook** and enter:
+Open **gt-engineering/infra → Settings → Webhooks → Add webhook** and enter:
 
 ```text
 Payload URL:      https://webhooks.podolog-warsaw.pl/api/webhook
@@ -112,7 +112,7 @@ must receive a successful 2xx response.
 
 ## 5. Add the Cortex GHCR webhook
 
-Open **gena-tokarev/cortex → Settings → Webhooks → Add webhook** and enter:
+Open **gt-engineering/cortex → Settings → Webhooks → Add webhook** and enter:
 
 ```text
 Payload URL:      https://webhooks.podolog-warsaw.pl/webhook?type=ghcr.io
@@ -127,6 +127,18 @@ Disable Pushes if GitHub selected it automatically; only **Packages** is
 required for Image Updater. The Cortex GHCR packages must remain connected to
 the Cortex repository so their `published` package events are delivered there.
 
+GitHub always sends an initial `ping` after a webhook is created, even when
+only **Packages** is selected. Image Updater v1.2.2 does not handle GitHub's
+generic ping event, so that first delivery is expected to return:
+
+```text
+400 unsupported event type: ping
+```
+
+This does not mean the webhook is misconfigured. Leave Pushes disabled and
+validate the first real `package` delivery after an image is published; that
+delivery must receive a successful 2xx response.
+
 ## 6. Add the Podolog GHCR webhook
 
 Repeat step 5 under **gena-tokarev/podolog → Settings → Webhooks**, using the
@@ -134,6 +146,7 @@ same URL and the same Image Updater GHCR secret. Select only **Packages**.
 
 The one GHCR secret is intentionally shared by these two registry webhooks
 because Image Updater supports one GHCR verification secret per controller.
+The initial GitHub `ping` has the same expected `400` response described above.
 
 ## 7. Test the complete flow
 

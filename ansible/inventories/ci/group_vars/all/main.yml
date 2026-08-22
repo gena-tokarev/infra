@@ -1,5 +1,5 @@
 environment_name: ci
-infra_repository_url: git@github.com:gena-tokarev/infra.git
+infra_repository_url: git@github.com:gt-engineering/infra.git
 infra_repository_revision: main
 vault_argocd_admin_password: CI_ONLY_PASSWORD
 vault_argocd_admin_password_hash: "$2b$12$CI_ONLY_NOT_A_REAL_PASSWORD_HASH0000000000000000000000000"

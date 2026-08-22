@@ -137,8 +137,8 @@ password in a password manager and commit only the encrypted `vault.yml`.
 These public image channels must exist:
 
 ```bash
-docker buildx imagetools inspect ghcr.io/gena-tokarev/cortex-auth-api:main
-docker buildx imagetools inspect ghcr.io/gena-tokarev/cortex-web:main
+docker buildx imagetools inspect ghcr.io/gt-engineering/cortex-auth-api:main
+docker buildx imagetools inspect ghcr.io/gt-engineering/cortex-web:main
 docker buildx imagetools inspect ghcr.io/gena-tokarev/podolog-web:main
 ```
 

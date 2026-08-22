@@ -9,12 +9,12 @@ spec:
       writeBackConfig:
         method: git:secret:argocd/argocd-image-updater-git
         gitConfig:
-          repository: https://github.com/gena-tokarev/infra.git
+          repository: https://github.com/gt-engineering/infra.git
           branch: main
           writeBackTarget: helmvalues:/environments/development/cortex/release.yaml
       images:
         - alias: auth-api
-          imageName: ghcr.io/gena-tokarev/cortex-auth-api:main
+          imageName: ghcr.io/gt-engineering/cortex-auth-api:main
           commonUpdateSettings:
             updateStrategy: digest
             platforms: [linux/amd64]
@@ -22,7 +22,7 @@ spec:
             helm:
               spec: authApi.image
         - alias: web
-          imageName: ghcr.io/gena-tokarev/cortex-web:main
+          imageName: ghcr.io/gt-engineering/cortex-web:main
           commonUpdateSettings:
             updateStrategy: digest
             platforms: [linux/amd64]
@@ -33,7 +33,7 @@ spec:
       writeBackConfig:
         method: git:secret:argocd/argocd-image-updater-git
         gitConfig:
-          repository: https://github.com/gena-tokarev/infra.git
+          repository: https://github.com/gt-engineering/infra.git
           branch: main
           writeBackTarget: helmvalues:/environments/development/podolog/release.yaml
           pullRequest:

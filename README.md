@@ -66,7 +66,9 @@ not call Docker.
 
 Additional guides: [database operations](docs/database.md),
 [GitHub setup](docs/github.md), [rollback](docs/rollback.md), and the
-[infrastructure learning path](docs/learning/README.md).
+[infrastructure learning path](docs/learning/README.md). If the repositories
+have just moved to the organization, follow the
+[organization migration guide](docs/organization-migration.md).
 
 ## Private cluster access
 

@@ -1,5 +1,5 @@
 environment_name: development
-infra_repository_url: git@github.com:gena-tokarev/infra.git
+infra_repository_url: git@github.com:gt-engineering/infra.git
 infra_repository_revision: main
 
 k3s_version: v1.36.1+k3s1

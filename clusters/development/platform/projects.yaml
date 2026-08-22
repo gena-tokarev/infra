@@ -6,7 +6,7 @@ metadata:
 spec:
   description: Cluster-level controllers and shared routing
   sourceRepos:
-    - git@github.com:gena-tokarev/infra.git
+    - git@github.com:gt-engineering/infra.git
     - https://charts.jetstack.io
     - https://cloudnative-pg.github.io/charts
     - https://argoproj.github.io/argo-helm
@@ -29,7 +29,7 @@ metadata:
 spec:
   description: Cortex and Podolog workloads
   sourceRepos:
-    - git@github.com:gena-tokarev/infra.git
+    - git@github.com:gt-engineering/infra.git
   destinations:
     - namespace: cortex
       server: https://kubernetes.default.svc

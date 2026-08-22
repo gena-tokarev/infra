@@ -67,7 +67,7 @@
       - letsencrypt_email is defined
       - "'REPLACE_WITH' not in letsencrypt_email"
       - webhooks_hostname == 'webhooks.podolog-warsaw.pl'
-      - infra_repository_url == 'git@github.com:gena-tokarev/infra.git'
+      - infra_repository_url == 'git@github.com:gt-engineering/infra.git'
 
 - name: Verify the GitOps certificate issuer uses the inventory email
   ansible.builtin.assert:

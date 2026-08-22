@@ -16,8 +16,8 @@ The following packages are public so k3s and Image Updater can pull them
 without registry credentials:
 
 ```text
-ghcr.io/gena-tokarev/cortex-auth-api
-ghcr.io/gena-tokarev/cortex-web
+ghcr.io/gt-engineering/cortex-auth-api
+ghcr.io/gt-engineering/cortex-web
 ghcr.io/gena-tokarev/podolog-web
 ```
 
@@ -26,7 +26,7 @@ Ansible Vault or infra-repository writer credential.
 
 ## Argo CD repository reader
 
-Argo CD reads the private `gena-tokarev/infra` repository using a dedicated SSH
+Argo CD reads the private `gt-engineering/infra` repository using a dedicated SSH
 deploy key:
 
 - register only the public key under **infra → Settings → Deploy keys**;

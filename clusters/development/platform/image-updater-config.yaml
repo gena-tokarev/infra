@@ -8,7 +8,7 @@ metadata:
 spec:
   project: platform
   source:
-    repoURL: git@github.com:gena-tokarev/infra.git
+    repoURL: git@github.com:gt-engineering/infra.git
     targetRevision: main
     path: platform/image-updater
   destination:
