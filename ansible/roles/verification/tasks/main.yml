@@ -20,6 +20,7 @@
   loop:
     - podolog
     - cortex
+    - webhooks
   changed_when: false
 
 - name: Verify Cortex readiness from the host without exposing it publicly

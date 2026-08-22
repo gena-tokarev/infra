@@ -68,6 +68,19 @@
         githubAppPrivateKey: "{{ vault_image_updater_github_app_private_key }}"
   no_log: true
 
+- name: Build Image Updater webhook Secret in memory
+  ansible.builtin.set_fact:
+    kubernetes_secrets_image_updater_webhook_manifest:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: argocd-image-updater-secret
+        namespace: argocd
+      type: Opaque
+      stringData:
+        webhook.ghcr-secret: "{{ vault_image_updater_ghcr_webhook_secret }}"
+  no_log: true
+
 - name: Stream Cortex runtime Secret directly to Kubernetes
   ansible.builtin.command: kubectl apply -f -
   args:
@@ -97,6 +110,24 @@
     'created' in kubernetes_secrets_image_updater_apply.stdout or
     'configured' in kubernetes_secrets_image_updater_apply.stdout
   no_log: true
+
+- name: Stream Image Updater webhook Secret directly to Kubernetes
+  ansible.builtin.command: kubectl apply -f -
+  args:
+    stdin: "{{ kubernetes_secrets_image_updater_webhook_manifest | to_json }}"
+  register: kubernetes_secrets_image_updater_webhook_apply
+  changed_when: >-
+    'created' in kubernetes_secrets_image_updater_webhook_apply.stdout or
+    'configured' in kubernetes_secrets_image_updater_webhook_apply.stdout
+  no_log: true
+
+- name: Restart existing Image Updater after webhook secret rotation  # noqa no-handler
+  ansible.builtin.command: >-
+    kubectl -n argocd rollout restart deployment/argocd-image-updater-controller
+  when: kubernetes_secrets_image_updater_webhook_apply.changed
+  register: kubernetes_secrets_image_updater_restart
+  changed_when: kubernetes_secrets_image_updater_restart.rc == 0
+  failed_when: kubernetes_secrets_image_updater_restart.rc not in [0, 1]
 
 - name: Restart existing Cortex workloads after secret rotation  # noqa no-handler
   ansible.builtin.command: kubectl -n cortex rollout restart deployment/cortex-auth-api

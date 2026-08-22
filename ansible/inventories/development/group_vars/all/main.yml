@@ -17,6 +17,7 @@ managed_path: /etc/cortex-infra
 podolog_hostname: podolog-warsaw.pl
 podolog_www_hostname: www.podolog-warsaw.pl
 cortex_hostname: cortex-dev.podolog-warsaw.pl
+webhooks_hostname: webhooks.podolog-warsaw.pl
 letsencrypt_email: gennadii.tokariev@gmail.com
 
 cortex_runtime_public:

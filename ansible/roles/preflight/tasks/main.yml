@@ -66,6 +66,7 @@
     that:
       - letsencrypt_email is defined
       - "'REPLACE_WITH' not in letsencrypt_email"
+      - webhooks_hostname == 'webhooks.podolog-warsaw.pl'
       - infra_repository_url == 'git@github.com:gena-tokarev/infra.git'
 
 - name: Verify the GitOps certificate issuer uses the inventory email
@@ -90,6 +91,8 @@
     - "{{ vault_image_updater_github_app_id }}"
     - "{{ vault_image_updater_github_app_installation_id }}"
     - "{{ vault_image_updater_github_app_private_key }}"
+    - "{{ vault_argocd_github_webhook_secret }}"
+    - "{{ vault_image_updater_ghcr_webhook_secret }}"
     - "{{ vault_cortex_postgres_password }}"
     - "{{ vault_cortex_database_url }}"
     - "{{ vault_auth_access_token_secret }}"
@@ -112,6 +115,8 @@
       - vault_image_updater_github_app_id is match('^[0-9]+$')
       - vault_image_updater_github_app_installation_id is match('^[0-9]+$')
       - vault_image_updater_github_app_private_key is regex('BEGIN (RSA )?PRIVATE KEY')
+      - vault_argocd_github_webhook_secret | length >= 32
+      - vault_image_updater_ghcr_webhook_secret | length >= 32
     fail_msg: Vault values, repository credentials, or the Cortex database configuration are invalid.
   no_log: true
 

@@ -5,3 +5,4 @@ resources:
   - traefik.yaml
   - gateway.yaml
   - certificates.yaml
+  - webhooks.yaml

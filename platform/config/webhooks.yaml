@@ -1,0 +1,102 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: webhook-body-limit
+  namespace: gateway-system
+spec:
+  buffering:
+    maxRequestBodyBytes: 1048576
+    memRequestBodyBytes: 1048576
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: webhook-rate-limit
+  namespace: gateway-system
+spec:
+  rateLimit:
+    average: 60
+    period: 1m
+    burst: 10
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: argocd-github-webhook
+  namespace: gateway-system
+spec:
+  parentRefs:
+    - name: public
+      sectionName: webhooks-https
+  hostnames:
+    - webhooks.podolog-warsaw.pl
+  rules:
+    - matches:
+        - path:
+            type: Exact
+            value: /api/webhook
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: webhook-body-limit
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: webhook-rate-limit
+      backendRefs:
+        - name: argocd-server
+          namespace: argocd
+          port: 80
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: image-updater-ghcr-webhook
+  namespace: gateway-system
+spec:
+  parentRefs:
+    - name: public
+      sectionName: webhooks-https
+  hostnames:
+    - webhooks.podolog-warsaw.pl
+  rules:
+    - matches:
+        - path:
+            type: Exact
+            value: /webhook
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: webhook-body-limit
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: webhook-rate-limit
+      backendRefs:
+        - name: argocd-image-updater
+          namespace: argocd
+          port: 8080
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: public-webhook-services
+  namespace: argocd
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: gateway-system
+  to:
+    - group: ""
+      kind: Service
+      name: argocd-server
+    - group: ""
+      kind: Service
+      name: argocd-image-updater

@@ -42,3 +42,12 @@ spec:
         certificateRefs:
           - {group: "", kind: Secret, name: cortex-tls}
       allowedRoutes: *allowedRoutes
+    - name: webhooks-https
+      protocol: HTTPS
+      port: 8443
+      hostname: webhooks.podolog-warsaw.pl
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - {group: "", kind: Secret, name: webhooks-tls}
+      allowedRoutes: *allowedRoutes

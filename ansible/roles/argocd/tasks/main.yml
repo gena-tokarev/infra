@@ -52,7 +52,8 @@
     stdin: >-
       {{ {'configs': {'secret': {
         'argocdServerAdminPassword': vault_argocd_admin_password_hash,
-        'argocdServerAdminPasswordMtime': '2026-08-09T00:00:00Z'
+        'argocdServerAdminPasswordMtime': '2026-08-09T00:00:00Z',
+        'githubSecret': vault_argocd_github_webhook_secret
       }}} | to_nice_yaml }}
   register: argocd_helm
   changed_when: "'has been upgraded' in argocd_helm.stdout or 'has been installed' in argocd_helm.stdout"

@@ -10,6 +10,8 @@ vault_image_updater_github_app_id: REPLACE_WITH_NUMERIC_GITHUB_APP_ID
 vault_image_updater_github_app_installation_id: REPLACE_WITH_NUMERIC_INSTALLATION_ID
 vault_image_updater_github_app_private_key: |
   REPLACE_WITH_GITHUB_APP_PRIVATE_KEY
+vault_argocd_github_webhook_secret: REPLACE_WITH_ARGOCD_GITHUB_WEBHOOK_SECRET
+vault_image_updater_ghcr_webhook_secret: REPLACE_WITH_IMAGE_UPDATER_GHCR_WEBHOOK_SECRET
 
 vault_cortex_postgres_password: REPLACE_WITH_POSTGRES_PASSWORD
 # URL-encode special characters in the password. Keep the host/service exactly
